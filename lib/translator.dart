@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Added for SystemChannels
 import 'package:flutter/gestures.dart'; // Added for DragStartBehavior
-import 'main.dart'; // Import the main.dart file to access SignTranslator
+import 'detector.dart'; // Import the main.dart file to access SignTranslator
 import 'speechtotext.dart'; // Import the speechtotext.dart file
 import 'settings.dart'; // Import the settings.dart file
 
@@ -111,7 +111,10 @@ class _TextTranslatorState extends State<TextTranslator> {
             children: [
               // App Header with logo/branding
               Container(
-                padding: const EdgeInsets.symmetric(vertical: 40.0, horizontal: 20.0),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 40.0,
+                  horizontal: 20.0,
+                ),
                 width: double.infinity,
                 color: Colors.black,
                 child: Column(
@@ -120,7 +123,7 @@ class _TextTranslatorState extends State<TextTranslator> {
                     Text(
                       'Sign Language',
                       style: TextStyle(
-                        color: Colors.white, 
+                        color: Colors.white,
                         fontSize: 26,
                         fontWeight: FontWeight.bold,
                       ),
@@ -128,22 +131,15 @@ class _TextTranslatorState extends State<TextTranslator> {
                     SizedBox(height: 5),
                     Text(
                       'Translation App',
-                      style: TextStyle(
-                        color: Colors.white70, 
-                        fontSize: 16,
-                      ),
+                      style: TextStyle(color: Colors.white70, fontSize: 16),
                     ),
                   ],
                 ),
               ),
-              
+
               // Divider
-              const Divider(
-                color: Colors.white24,
-                thickness: 1,
-                height: 1,
-              ),
-              
+              const Divider(color: Colors.white24, thickness: 1, height: 1),
+
               // Navigation Items
               Expanded(
                 child: ListView(
@@ -151,7 +147,10 @@ class _TextTranslatorState extends State<TextTranslator> {
                   children: <Widget>[
                     // Detector option
                     ListTile(
-                      leading: const Icon(Icons.camera_alt, color: Colors.white),
+                      leading: const Icon(
+                        Icons.camera_alt,
+                        color: Colors.white,
+                      ),
                       title: const Text(
                         'Detector',
                         style: TextStyle(color: Colors.white, fontSize: 16),
@@ -161,15 +160,22 @@ class _TextTranslatorState extends State<TextTranslator> {
                         Navigator.pushReplacement(
                           context,
                           PageRouteBuilder(
-                            pageBuilder: (context, animation, secondaryAnimation) => const SignTranslator(),
-                            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                            pageBuilder:
+                                (context, animation, secondaryAnimation) =>
+                                    const SignTranslator(),
+                            transitionsBuilder: (
+                              context,
+                              animation,
+                              secondaryAnimation,
+                              child,
+                            ) {
                               return child; // Instant transition
                             },
                           ),
                         );
                       },
                     ),
-                    
+
                     // Speech To Text option
                     ListTile(
                       leading: const Icon(Icons.mic, color: Colors.white),
@@ -182,23 +188,37 @@ class _TextTranslatorState extends State<TextTranslator> {
                         Navigator.pushReplacement(
                           context,
                           PageRouteBuilder(
-                            pageBuilder: (context, animation, secondaryAnimation) => const SpeechToText(),
-                            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                            pageBuilder:
+                                (context, animation, secondaryAnimation) =>
+                                    const SpeechToText(),
+                            transitionsBuilder: (
+                              context,
+                              animation,
+                              secondaryAnimation,
+                              child,
+                            ) {
                               return child; // Instant transition
                             },
                           ),
                         );
                       },
                     ),
-                    
+
                     // Translator option (current page)
                     Container(
                       color: Colors.white10,
                       child: ListTile(
-                        leading: const Icon(Icons.translate, color: Colors.blue),
+                        leading: const Icon(
+                          Icons.translate,
+                          color: Colors.blue,
+                        ),
                         title: const Text(
                           'Translator',
-                          style: TextStyle(color: Colors.blue, fontSize: 16, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            color: Colors.blue,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         onTap: () {
                           Navigator.pop(context);
@@ -206,7 +226,7 @@ class _TextTranslatorState extends State<TextTranslator> {
                         },
                       ),
                     ),
-                    
+
                     // Settings option
                     ListTile(
                       leading: const Icon(Icons.settings, color: Colors.white),
@@ -219,8 +239,15 @@ class _TextTranslatorState extends State<TextTranslator> {
                         Navigator.pushReplacement(
                           context,
                           PageRouteBuilder(
-                            pageBuilder: (context, animation, secondaryAnimation) => const Settings(),
-                            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                            pageBuilder:
+                                (context, animation, secondaryAnimation) =>
+                                    const Settings(),
+                            transitionsBuilder: (
+                              context,
+                              animation,
+                              secondaryAnimation,
+                              child,
+                            ) {
                               return child; // Instant transition
                             },
                           ),
@@ -230,10 +257,13 @@ class _TextTranslatorState extends State<TextTranslator> {
                   ],
                 ),
               ),
-              
+
               // Footer section
               Container(
-                padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 20.0),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 20.0,
+                  horizontal: 20.0,
+                ),
                 child: Column(
                   children: [
                     const Divider(
@@ -246,16 +276,28 @@ class _TextTranslatorState extends State<TextTranslator> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         TextButton.icon(
-                          icon: const Icon(Icons.info_outline, color: Colors.white70),
-                          label: const Text('About', style: TextStyle(color: Colors.white70)),
+                          icon: const Icon(
+                            Icons.info_outline,
+                            color: Colors.white70,
+                          ),
+                          label: const Text(
+                            'About',
+                            style: TextStyle(color: Colors.white70),
+                          ),
                           onPressed: () {
                             Navigator.pop(context);
                             // Show about dialog or navigate to about page
                           },
                         ),
                         TextButton.icon(
-                          icon: const Icon(Icons.help_outline, color: Colors.white70),
-                          label: const Text('Help', style: TextStyle(color: Colors.white70)),
+                          icon: const Icon(
+                            Icons.help_outline,
+                            color: Colors.white70,
+                          ),
+                          label: const Text(
+                            'Help',
+                            style: TextStyle(color: Colors.white70),
+                          ),
                           onPressed: () {
                             Navigator.pop(context);
                             // Show help dialog or navigate to help page
@@ -293,13 +335,13 @@ class _TextTranslatorState extends State<TextTranslator> {
               },
               // Add horizontal drag handler to match other files
               onHorizontalDragUpdate: (details) {
-                  // Hide keyboard and prevent text input
-                  SystemChannels.textInput.invokeMethod('TextInput.hide');
-                  FocusScope.of(context).unfocus();
-                  setState(() => _preventTextInput = true);
+                // Hide keyboard and prevent text input
+                SystemChannels.textInput.invokeMethod('TextInput.hide');
+                FocusScope.of(context).unfocus();
+                setState(() => _preventTextInput = true);
 
-                  // Open drawer
-                  Scaffold.of(scaffoldContext).openDrawer();
+                // Open drawer
+                Scaffold.of(scaffoldContext).openDrawer();
               },
               behavior:
                   HitTestBehavior.translucent, // Capture taps on the whole area
@@ -312,17 +354,18 @@ class _TextTranslatorState extends State<TextTranslator> {
                     margin: const EdgeInsets.only(top: 40.0, bottom: 10.0),
                     padding: const EdgeInsets.only(left: 10.0),
                     child: Builder(
-                      builder: (context) => IconButton(
-                        icon: const Icon(
-                          Icons.menu,
-                          color: Colors.white,
-                          size: 35,
-                        ),
-                        onPressed: () {
-                          // Use the simplified drawer opening
-                          _handleDrawerOpen(scaffoldContext);
-                        },
-                      ),
+                      builder:
+                          (context) => IconButton(
+                            icon: const Icon(
+                              Icons.menu,
+                              color: Colors.white,
+                              size: 35,
+                            ),
+                            onPressed: () {
+                              // Use the simplified drawer opening
+                              _handleDrawerOpen(scaffoldContext);
+                            },
+                          ),
                     ),
                   ),
                   Expanded(
