@@ -100,7 +100,7 @@ class _SignTranslatorState extends State<SignTranslator> {
                       ),
                       onTap: () {
                         Navigator.pop(context);
-                        Navigator.pushReplacement(
+                        Navigator.push(
                           context,
                           PageRouteBuilder(
                             pageBuilder:
@@ -128,7 +128,7 @@ class _SignTranslatorState extends State<SignTranslator> {
                       ),
                       onTap: () {
                         Navigator.pop(context);
-                        Navigator.pushReplacement(
+                        Navigator.push(
                           context,
                           PageRouteBuilder(
                             pageBuilder:
@@ -156,7 +156,7 @@ class _SignTranslatorState extends State<SignTranslator> {
                       ),
                       onTap: () {
                         Navigator.pop(context);
-                        Navigator.pushReplacement(
+                        Navigator.push(
                           context,
                           PageRouteBuilder(
                             pageBuilder:
@@ -332,7 +332,7 @@ class _SignTranslatorState extends State<SignTranslator> {
                             splashFactory: NoSplash.splashFactory, // Add NoSplash here
                           ),
                           onPressed: () {
-                            Navigator.pushReplacement(
+                            Navigator.push(
                               context,
                               PageRouteBuilder(
                                 pageBuilder:

@@ -59,27 +59,7 @@ class _TextTranslatorState extends State<TextTranslator> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (bool didPop, Object? result) async {
-        if (!didPop) {
-          Navigator.pushReplacement(
-            context,
-            PageRouteBuilder(
-              pageBuilder:
-                  (context, animation, secondaryAnimation) =>
-                      const SignTranslator(),
-              transitionsBuilder: (
-                context,
-                animation,
-                secondaryAnimation,
-                child,
-              ) {
-                return child; // Instant transition
-              },
-            ),
-          );
-        }
-      },
+      canPop: true, // Changed to true to allow normal back button behavior
       child: Scaffold(
         key: _scaffoldKey,
         resizeToAvoidBottomInset:
@@ -157,7 +137,7 @@ class _TextTranslatorState extends State<TextTranslator> {
                       ),
                       onTap: () {
                         Navigator.pop(context); // Close the drawer
-                        Navigator.pushReplacement(
+                        Navigator.push(
                           context,
                           PageRouteBuilder(
                             pageBuilder:
@@ -185,7 +165,7 @@ class _TextTranslatorState extends State<TextTranslator> {
                       ),
                       onTap: () {
                         Navigator.pop(context);
-                        Navigator.pushReplacement(
+                        Navigator.push(
                           context,
                           PageRouteBuilder(
                             pageBuilder:
@@ -236,7 +216,7 @@ class _TextTranslatorState extends State<TextTranslator> {
                       ),
                       onTap: () {
                         Navigator.pop(context);
-                        Navigator.pushReplacement(
+                        Navigator.push(
                           context,
                           PageRouteBuilder(
                             pageBuilder:

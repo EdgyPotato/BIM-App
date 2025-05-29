@@ -1,43 +1,102 @@
 import 'package:flutter/material.dart';
-import 'detector.dart'; // Import the main.dart file to access SignTranslator
-import 'translator.dart'; // Import the translator.dart file
-import 'settings.dart'; // Import the settings.dart file
+import 'detector.dart';
+import 'translator.dart';
+import 'settings.dart';
+import 'backend_controller.dart'; // Import the backend controller
 
-class SpeechToText extends StatelessWidget {
+class SpeechToText extends StatefulWidget {
   const SpeechToText({super.key});
+
+  @override
+  State<SpeechToText> createState() => _SpeechToTextState();
+}
+
+class _SpeechToTextState extends State<SpeechToText> {
+  bool _isRecording = false;
+  bool _isProcessing = false;
+  String _transcription = '';
+  late SpeechRecognitionController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = SpeechRecognitionController(
+      onTranscriptionUpdated: (text) {
+        setState(() {
+          _transcription = text;
+        });
+      },
+      onListeningStatusChanged: (isListening) {
+        setState(() {
+          _isRecording = isListening;
+        });
+      },
+      onProcessingStatusChanged: (isProcessing) {
+        setState(() {
+          _isProcessing = isProcessing;
+        });
+      },
+    );
+    _controller.initialize();
+  }
+
+  void _toggleRecordingState() {
+    if (_isRecording) {
+      _controller.stopListening();
+    } else {
+      _controller.startListening();
+    }
+  }
+
+  // Helper method to convert text to sentence case
+  String _toSentenceCase(String text) {
+    if (text.isEmpty) return text;
+    
+    // Split by sentences (period followed by space)
+    final sentences = text.split('. ');
+    
+    // Convert each sentence to sentence case
+    final sentenceCased = sentences.map((sentence) {
+      if (sentence.isEmpty) return sentence;
+      // Capitalize first letter, keep rest as is
+      return sentence[0].toUpperCase() + sentence.substring(1).toLowerCase();
+    }).toList();
+    
+    // Join back with period and space
+    return sentenceCased.join('. ');
+  }
+
+  String _getStatusText() {
+    if (_isRecording) {
+      return 'Recording...';
+    } else if (_isProcessing) {
+      return 'Processing...';
+    } else if (_transcription.isNotEmpty) {
+      return _toSentenceCase(_transcription);
+    } else {
+      return 'Press the microphone button to start transcribing your speech to text.';
+    }
+  }
+
+  Color _getStatusTextColor() {
+    if (_transcription.isNotEmpty && !_isRecording && !_isProcessing) {
+      return Colors.white; // White for transcription result
+    } else {
+      return const Color(0x809E9E9E); // Barely visible grey for instructions
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (bool didPop, Object? result) async {
-        if (!didPop) {
-          Navigator.pushReplacement(
-            context,
-            PageRouteBuilder(
-              pageBuilder:
-                  (context, animation, secondaryAnimation) =>
-                      const SignTranslator(),
-              transitionsBuilder: (
-                context,
-                animation,
-                secondaryAnimation,
-                child,
-              ) {
-                return child; // Instant transition
-              },
-            ),
-          );
-        }
-      },
+      canPop: true,
       child: Scaffold(
         backgroundColor: Colors.black,
-        // change sidebar width size
         drawer: Drawer(
           backgroundColor: Colors.black,
           width: 0.8 * MediaQuery.of(context).size.width,
           child: Column(
             children: [
-              // App Header with logo/branding
               Container(
                 padding: const EdgeInsets.symmetric(
                   vertical: 40.0,
@@ -64,16 +123,11 @@ class SpeechToText extends StatelessWidget {
                   ],
                 ),
               ),
-
-              // Divider
               const Divider(color: Colors.white24, thickness: 1, height: 1),
-
-              // Navigation Items
               Expanded(
                 child: ListView(
                   padding: EdgeInsets.zero,
                   children: <Widget>[
-                    // Detector option
                     ListTile(
                       leading: const Icon(
                         Icons.camera_alt,
@@ -84,8 +138,8 @@ class SpeechToText extends StatelessWidget {
                         style: TextStyle(color: Colors.white, fontSize: 16),
                       ),
                       onTap: () {
-                        Navigator.pop(context); // Close the drawer
-                        Navigator.pushReplacement(
+                        Navigator.pop(context);
+                        Navigator.push(
                           context,
                           PageRouteBuilder(
                             pageBuilder:
@@ -97,14 +151,12 @@ class SpeechToText extends StatelessWidget {
                               secondaryAnimation,
                               child,
                             ) {
-                              return child; // Instant transition
+                              return child;
                             },
                           ),
                         );
                       },
                     ),
-
-                    // Speech To Text option (current page)
                     Container(
                       color: Colors.white10,
                       child: ListTile(
@@ -119,12 +171,9 @@ class SpeechToText extends StatelessWidget {
                         ),
                         onTap: () {
                           Navigator.pop(context);
-                          // Already on Speech To Text page, just close drawer
                         },
                       ),
                     ),
-
-                    // Translator option
                     ListTile(
                       leading: const Icon(Icons.translate, color: Colors.white),
                       title: const Text(
@@ -133,7 +182,7 @@ class SpeechToText extends StatelessWidget {
                       ),
                       onTap: () {
                         Navigator.pop(context);
-                        Navigator.pushReplacement(
+                        Navigator.push(
                           context,
                           PageRouteBuilder(
                             pageBuilder:
@@ -145,14 +194,12 @@ class SpeechToText extends StatelessWidget {
                               secondaryAnimation,
                               child,
                             ) {
-                              return child; // Instant transition
+                              return child;
                             },
                           ),
                         );
                       },
                     ),
-
-                    // Settings option
                     ListTile(
                       leading: const Icon(Icons.settings, color: Colors.white),
                       title: const Text(
@@ -161,7 +208,7 @@ class SpeechToText extends StatelessWidget {
                       ),
                       onTap: () {
                         Navigator.pop(context);
-                        Navigator.pushReplacement(
+                        Navigator.push(
                           context,
                           PageRouteBuilder(
                             pageBuilder:
@@ -173,7 +220,7 @@ class SpeechToText extends StatelessWidget {
                               secondaryAnimation,
                               child,
                             ) {
-                              return child; // Instant transition
+                              return child;
                             },
                           ),
                         );
@@ -182,8 +229,6 @@ class SpeechToText extends StatelessWidget {
                   ],
                 ),
               ),
-
-              // Footer section
               Container(
                 padding: const EdgeInsets.symmetric(
                   vertical: 20.0,
@@ -211,7 +256,6 @@ class SpeechToText extends StatelessWidget {
                           ),
                           onPressed: () {
                             Navigator.pop(context);
-                            // Show about dialog or navigate to about page
                           },
                         ),
                         TextButton.icon(
@@ -225,7 +269,6 @@ class SpeechToText extends StatelessWidget {
                           ),
                           onPressed: () {
                             Navigator.pop(context);
-                            // Show help dialog or navigate to help page
                           },
                         ),
                       ],
@@ -236,20 +279,15 @@ class SpeechToText extends StatelessWidget {
             ],
           ),
         ),
-        drawerEnableOpenDragGesture: true, // Explicitly enable drag gesture
-        drawerEdgeDragWidth:
-            MediaQuery.of(context)
-                .size
-                .width, // Allow dragging from anywhere for the default gesture
+        drawerEnableOpenDragGesture: true,
+        drawerEdgeDragWidth: MediaQuery.of(context).size.width,
         body: Builder(
-          // Wrap body with Builder to get context for Scaffold.of
           builder: (BuildContext scaffoldContext) {
             return GestureDetector(
               onHorizontalDragUpdate: (details) {
                 Scaffold.of(scaffoldContext).openDrawer();
               },
-              behavior:
-                  HitTestBehavior.translucent, // Capture taps on the whole area
+              behavior: HitTestBehavior.translucent,
               child: Column(
                 children: [
                   Container(
@@ -259,17 +297,16 @@ class SpeechToText extends StatelessWidget {
                     margin: const EdgeInsets.only(top: 40.0, bottom: 10.0),
                     padding: const EdgeInsets.only(left: 10.0),
                     child: Builder(
-                      builder:
-                          (context) => IconButton(
-                            icon: const Icon(
-                              Icons.menu,
-                              color: Colors.white,
-                              size: 35,
-                            ),
-                            onPressed: () {
-                              Scaffold.of(scaffoldContext).openDrawer();
-                            },
-                          ),
+                      builder: (context) => IconButton(
+                        icon: const Icon(
+                          Icons.menu,
+                          color: Colors.white,
+                          size: 35,
+                        ),
+                        onPressed: () {
+                          Scaffold.of(scaffoldContext).openDrawer();
+                        },
+                      ),
                     ),
                   ),
                   Expanded(
@@ -282,10 +319,10 @@ class SpeechToText extends StatelessWidget {
                         20.0,
                         10.0,
                       ),
-                      child: const Text(
-                        'Output Text',
+                      child: Text(
+                        _getStatusText(),
                         style: TextStyle(
-                          color: Color(0x809E9E9E), // Barely visible grey
+                          color: _getStatusTextColor(),
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
                         ),
@@ -296,10 +333,9 @@ class SpeechToText extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.symmetric(
                       vertical: 30.0,
-                    ), // Adjusted padding
+                    ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly, // Adjusted spacing
-                      // Changed to spaceEvenly for better distribution
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
@@ -308,19 +344,57 @@ class SpeechToText extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(
                               horizontal: 30,
                               vertical: 20,
-                            ), // Added padding
+                            ),
                             textStyle: const TextStyle(
                               fontSize: 14,
-                            ), // Adjusted text style
+                            ),
+                            splashFactory: NoSplash.splashFactory,
                           ),
-                          onPressed: () {},
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              PageRouteBuilder(
+                                pageBuilder: (context, animation, secondaryAnimation) =>
+                                    const TextTranslator(),
+                                transitionsBuilder: (
+                                  context,
+                                  animation,
+                                  secondaryAnimation,
+                                  child,
+                                ) {
+                                  return child;
+                                },
+                              ),
+                            );
+                          },
                           child: const Text(
                             'Translate',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
-                            ), // Adjusted text style
+                            ),
                           ),
+                        ),
+                        ElevatedButton(
+                          onPressed: _isProcessing ? null : _toggleRecordingState,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _isRecording ? Colors.black : Colors.white,
+                            foregroundColor: _isRecording ? Colors.white : Colors.black,
+                            disabledBackgroundColor: Colors.grey[700],
+                            disabledForegroundColor: Colors.grey[300],
+                            elevation: 0.0,
+                            padding: const EdgeInsets.all(16),
+                            minimumSize: const Size(60, 60),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16.0),
+                              side: BorderSide(
+                                color: _isRecording ? Colors.white : Colors.transparent,
+                                width: 3.0,
+                              ),
+                            ),
+                            splashFactory: NoSplash.splashFactory,
+                          ),
+                          child: const Icon(Icons.mic, size: 35.0),
                         ),
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
@@ -329,18 +403,22 @@ class SpeechToText extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(
                               horizontal: 30,
                               vertical: 20,
-                            ), // Added padding
+                            ),
                             textStyle: const TextStyle(
                               fontSize: 14,
-                            ), // Adjusted text style
+                            ),
                           ),
-                          onPressed: () {},
+                          onPressed: () {
+                            setState(() {
+                              _transcription = '';
+                            });
+                          },
                           child: const Text(
                             'Clear text',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
-                            ), // Adjusted text style
+                            ),
                           ),
                         ),
                       ],

@@ -94,6 +94,7 @@ class _SettingsState extends State<Settings> {
   // Load settings from file
   Future<void> _loadSettings() async {
     final loadedSettings = await AppSettings.loadSettings();
+    if (!mounted) return; // Add mounted check
     setState(() {
       _settings = loadedSettings;
       _selectedPage = _settings.defaultPage;
@@ -226,38 +227,11 @@ class _SettingsState extends State<Settings> {
 
     final isConnected = await ApiController.checkApiStatus();
 
+    if (!mounted) return; // Add mounted check
     setState(() {
       _isApiConnected = isConnected;
       _isCheckingApi = false;
     });
-  }
-
-  // Navigate to the appropriate page
-  void _navigateToPage(BuildContext context) {
-    Widget page;
-
-    // Determine which page to navigate to
-    switch (_selectedPage) {
-      case 'detector':
-        page = const SignTranslator();
-        break;
-      case 'speechtotext':
-        page = const SpeechToText();
-        break;
-      default:
-        page = const SignTranslator();
-    }
-
-    // Navigate to the selected page
-    Navigator.pushReplacement(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => page,
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return child; // Instant transition
-        },
-      ),
-    );
   }
 
   @override
@@ -270,12 +244,7 @@ class _SettingsState extends State<Settings> {
     }
 
     return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (bool didPop, Object? result) async {
-        if (!didPop) {
-          _navigateToPage(context);
-        }
-      },
+      canPop: true, // Allow normal back button behavior
       child: Scaffold(
         backgroundColor: Colors.black,
         drawer: _buildDrawer(context),
@@ -647,7 +616,7 @@ class _SettingsState extends State<Settings> {
                   ),
                   onTap: () {
                     Navigator.pop(context); // Close the drawer
-                    Navigator.pushReplacement(
+                    Navigator.push(
                       context,
                       PageRouteBuilder(
                         pageBuilder:
@@ -675,7 +644,7 @@ class _SettingsState extends State<Settings> {
                   ),
                   onTap: () {
                     Navigator.pop(context);
-                    Navigator.pushReplacement(
+                    Navigator.push(
                       context,
                       PageRouteBuilder(
                         pageBuilder:
@@ -703,7 +672,7 @@ class _SettingsState extends State<Settings> {
                   ),
                   onTap: () {
                     Navigator.pop(context);
-                    Navigator.pushReplacement(
+                    Navigator.push(
                       context,
                       PageRouteBuilder(
                         pageBuilder:
