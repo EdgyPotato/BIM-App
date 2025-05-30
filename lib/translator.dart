@@ -4,9 +4,16 @@ import 'package:flutter/gestures.dart'; // Added for DragStartBehavior
 import 'detector.dart'; // Import the main.dart file to access SignTranslator
 import 'speechtotext.dart'; // Import the speechtotext.dart file
 import 'settings.dart'; // Import the settings.dart file
+import 'api_controller.dart'; // Import the api_controller.dart file
 
 class TextTranslator extends StatefulWidget {
-  const TextTranslator({super.key});
+  // Add parameter to accept initial text
+  final String? initialText;
+
+  const TextTranslator({
+    super.key,
+    this.initialText,
+  });
 
   @override
   State<TextTranslator> createState() => _TextTranslatorState();
@@ -20,9 +27,20 @@ class _TextTranslatorState extends State<TextTranslator> {
   bool _isDrawerOpening = false;
   bool _preventTextInput = false;
 
+  // Add state for translation
+  String _translatedText = '';
+  bool _isTranslating = false;
+
   @override
   void initState() {
     super.initState();
+
+    // Set initial text if provided
+    if (widget.initialText != null && widget.initialText!.isNotEmpty) {
+      _textController.text = widget.initialText!;
+      _isTextEmpty = false;
+    }
+
     _focusNode.addListener(() {
       setState(() {
         // Prevent focus when drawer is opening
@@ -47,6 +65,32 @@ class _TextTranslatorState extends State<TextTranslator> {
 
     // Open drawer
     Scaffold.of(context).openDrawer();
+  }
+
+  // Add method to handle translation
+  Future<void> _translateText() async {
+    // Don't translate if input is empty
+    if (_textController.text.isEmpty) return;
+
+    setState(() {
+      _isTranslating = true;
+    });
+
+    try {
+      final translatedText =
+          await ApiController.translateText(_textController.text);
+
+      setState(() {
+        _isTranslating = false;
+        _translatedText =
+            translatedText ?? 'Translation failed. Please try again.';
+      });
+    } catch (e) {
+      setState(() {
+        _isTranslating = false;
+        _translatedText = 'Error: $e';
+      });
+    }
   }
 
   @override
@@ -334,18 +378,17 @@ class _TextTranslatorState extends State<TextTranslator> {
                     margin: const EdgeInsets.only(top: 40.0, bottom: 10.0),
                     padding: const EdgeInsets.only(left: 10.0),
                     child: Builder(
-                      builder:
-                          (context) => IconButton(
-                            icon: const Icon(
-                              Icons.menu,
-                              color: Colors.white,
-                              size: 35,
-                            ),
-                            onPressed: () {
-                              // Use the simplified drawer opening
-                              _handleDrawerOpen(scaffoldContext);
-                            },
-                          ),
+                      builder: (context) => IconButton(
+                        icon: const Icon(
+                          Icons.menu,
+                          color: Colors.white,
+                          size: 35,
+                        ),
+                        onPressed: () {
+                          // Use the simplified drawer opening
+                          _handleDrawerOpen(scaffoldContext);
+                        },
+                      ),
                     ),
                   ),
                   Expanded(
@@ -442,15 +485,28 @@ class _TextTranslatorState extends State<TextTranslator> {
                         20.0,
                         10.0,
                       ),
-                      child: const Text(
-                        'Translated Text Here...',
-                        style: TextStyle(
-                          color: Color(0x809E9E9E), // Barely visible grey
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.left,
-                      ),
+                      child: _isTranslating
+                          ? const Center(
+                              child: CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white),
+                              ),
+                            )
+                          : SingleChildScrollView(
+                              child: Text(
+                                _translatedText.isEmpty
+                                    ? 'Translated Text Here...'
+                                    : _translatedText,
+                                style: TextStyle(
+                                  color: _translatedText.isEmpty
+                                      ? const Color(0x809E9E9E)
+                                      : Colors.white,
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.left,
+                              ),
+                            ),
                     ),
                   ),
                   Padding(
@@ -472,14 +528,25 @@ class _TextTranslatorState extends State<TextTranslator> {
                               fontSize: 14,
                             ), // Adjusted text style
                           ),
-                          onPressed: () {},
-                          child: const Text(
-                            'Translate',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ), // Adjusted text style
-                          ),
+                          onPressed:
+                              _isTextEmpty || _isTranslating ? null : _translateText,
+                          child: _isTranslating
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.0,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.black),
+                                  ),
+                                )
+                              : const Text(
+                                  'Translate',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ), // Adjusted text style
+                                ),
                         ),
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
@@ -494,8 +561,11 @@ class _TextTranslatorState extends State<TextTranslator> {
                             ), // Adjusted text style
                           ),
                           onPressed: () {
-                            // Clear the text input and unfocus
+                            // Clear both text input and translated text
                             _textController.clear();
+                            setState(() {
+                              _translatedText = '';
+                            });
                             FocusScope.of(context).unfocus();
                           },
                           child: const Text(

@@ -1,79 +1,135 @@
-import 'package:speech_to_text/speech_to_text.dart' as stt;
-import 'package:flutter/widgets.dart';
+import 'dart:async';
+import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:record/record.dart';
 
-class SpeechRecognitionController {
-  final stt.SpeechToText _speechToText = stt.SpeechToText();
-  bool _isInitialized = false;
-  String _transcription = '';
-  bool _isListening = false;
+class BackendController {
+  final _audioRecorder = AudioRecorder(); // Using AudioRecorder class
+  bool _isRecording = false;
+  String? _recordingPath;
+  Timer? _silenceTimer;
+  DateTime? _lastAudioActivity;
+  StreamSubscription<Amplitude>? _amplitudeSubscription;
   
-  // Callback functions
-  final Function(String) onTranscriptionUpdated;
-  final Function(bool) onListeningStatusChanged;
-  final Function(bool) onProcessingStatusChanged;
-
-  SpeechRecognitionController({
-    required this.onTranscriptionUpdated,
-    required this.onListeningStatusChanged,
-    required this.onProcessingStatusChanged,
-  });
-
-  Future<void> initialize() async {
-    if (!_isInitialized) {
-      _isInitialized = await _speechToText.initialize(
-        onStatus: (status) {
-          if (status == 'done' && _isListening) {
-            _isListening = false;
-            onListeningStatusChanged(false);
-            onProcessingStatusChanged(true);
-            
-            // Simulate processing delay
-            Future.delayed(const Duration(milliseconds: 500), () {
-              onProcessingStatusChanged(false);
-            });
-          }
-        },
-        onError: (error) => debugPrint('Speech recognition error: $error'),
-      );
+  // Initialize recorder and check permissions
+  Future<void> initRecorder() async {
+    try {
+      final hasPermission = await _audioRecorder.hasPermission();
+      if (hasPermission) {
+        debugPrint("Recorder initialized with permissions");
+      } else {
+        debugPrint("Microphone permission denied");
+      }
+    } catch (e) {
+      debugPrint('Error initializing recorder: $e');
     }
   }
 
-  Future<void> startListening() async {
-    await initialize();
+  // Start recording audio
+  Future<void> startRecording() async {
+    if (_isRecording) return;
     
-    if (_isInitialized && !_isListening) {
-      _isListening = true;
-      onListeningStatusChanged(true);
+    try {
+      // Get temporary directory
+      final directory = await getTemporaryDirectory();
+      _recordingPath = '${directory.path}/speech_recording.m4a';
       
-      _transcription = '';
-      onTranscriptionUpdated(_transcription);
-      
-      await _speechToText.listen(
-        onResult: (result) {
-          _transcription = result.recognizedWords;
-          onTranscriptionUpdated(_transcription);
-        },
-        listenFor: const Duration(seconds: 30),
-        pauseFor: const Duration(seconds: 3),
-        localeId: 'en_US',
-      );
+      // Configure recording - ensure path is non-nullable
+      if (_recordingPath != null) {
+        // Use RecordConfig for configuration
+        await _audioRecorder.start(
+          const RecordConfig(
+            encoder: AudioEncoder.aacLc,
+            bitRate: 160000,
+            sampleRate: 44100,
+          ),
+          path: _recordingPath!,
+        );
+        
+        _isRecording = true;
+        _lastAudioActivity = DateTime.now();
+        
+        // Start silence detection
+        _startSilenceDetection();
+        
+        debugPrint('Recording started at: $_recordingPath');
+      } else {
+        debugPrint('Error: Recording path is null');
+      }
+    } catch (e) {
+      debugPrint('Error starting recording: $e');
     }
   }
 
-  Future<void> stopListening() async {
-    if (_isListening) {
-      await _speechToText.stop();
-      _isListening = false;
-      onListeningStatusChanged(false);
-      onProcessingStatusChanged(true);
+  // Monitor for silence
+  void _startSilenceDetection() {
+    _silenceTimer?.cancel();
+    _amplitudeSubscription?.cancel();
+    
+    // Set up amplitude monitoring using stream
+    _amplitudeSubscription = _audioRecorder.onAmplitudeChanged(
+      const Duration(milliseconds: 300)
+    ).listen((amplitude) {
+      if (!_isRecording) return;
       
-      // Simulate processing delay
-      Future.delayed(const Duration(milliseconds: 500), () {
-        onProcessingStatusChanged(false);
-      });
-    }
+      final now = DateTime.now();
+      
+      // If sound detected, update last activity timestamp
+      if (amplitude.current > -50) { // Adjust threshold as needed
+        _lastAudioActivity = now;
+      }
+    });
+    
+    // Check for silence periodically
+    _silenceTimer = Timer.periodic(
+      const Duration(milliseconds: 500), 
+      (timer) async {
+        if (!_isRecording) {
+          timer.cancel();
+          return;
+        }
+        
+        try {
+          final now = DateTime.now();
+          
+          if (_lastAudioActivity != null) {
+            // Check if silence has persisted for 5 seconds
+            final silenceDuration = now.difference(_lastAudioActivity!);
+            if (silenceDuration.inSeconds >= 5) {
+              debugPrint('Silence detected for 5 seconds, stopping recording');
+              await stopRecording();
+            }
+          }
+        } catch (e) {
+          debugPrint('Error in silence detection: $e');
+        }
+      }
+    );
   }
 
-  bool get isListening => _isListening;
-  String get transcription => _transcription;
+  // Stop recording and return file path
+  Future<String?> stopRecording() async {
+    _silenceTimer?.cancel();
+    _amplitudeSubscription?.cancel();
+    
+    if (_isRecording) {
+      try {
+        final path = await _audioRecorder.stop();
+        _isRecording = false;
+        return path;
+      } catch (e) {
+        debugPrint('Error stopping recording: $e');
+      }
+    }
+    return null;
+  }
+
+  // Clean up resources
+  Future<void> dispose() async {
+    _silenceTimer?.cancel();
+    _amplitudeSubscription?.cancel();
+    await _audioRecorder.dispose();
+  }
+
+  bool get isRecording => _isRecording;
 }

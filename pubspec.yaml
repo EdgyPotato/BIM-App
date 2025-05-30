@@ -33,7 +33,10 @@ dependencies:
   path_provider: ^2.1.1  # For accessing local file system
   http: ^1.1.0
   camera: ^0.11.1
-  speech_to_text: ^7.0.0
+  record: ^6.0.0
+  path: ^1.8.3  # Add this for path manipulation utilities
+  http_parser: ^4.0.2  # Add this for MediaType class
+  ultralytics_yolo: ^0.1.4
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 import 'detector.dart';
 import 'translator.dart';
 import 'settings.dart';
-import 'backend_controller.dart'; // Import the backend controller
+import 'backend_controller.dart';
+import 'api_controller.dart';
 
 class SpeechToText extends StatefulWidget {
   const SpeechToText({super.key});
@@ -12,78 +14,101 @@ class SpeechToText extends StatefulWidget {
 }
 
 class _SpeechToTextState extends State<SpeechToText> {
+  final BackendController _backendController = BackendController();
   bool _isRecording = false;
   bool _isProcessing = false;
-  String _transcription = '';
-  late SpeechRecognitionController _controller;
+  String _statusText = 'Press the microphone button to start transcribing your speech to text.';
+  bool _isTranscriptionResult = false; // Flag to track if statusText contains transcription
 
   @override
   void initState() {
     super.initState();
-    _controller = SpeechRecognitionController(
-      onTranscriptionUpdated: (text) {
-        setState(() {
-          _transcription = text;
-        });
-      },
-      onListeningStatusChanged: (isListening) {
-        setState(() {
-          _isRecording = isListening;
-        });
-      },
-      onProcessingStatusChanged: (isProcessing) {
-        setState(() {
-          _isProcessing = isProcessing;
-        });
-      },
-    );
-    _controller.initialize();
+    _initializeRecorder();
   }
 
-  void _toggleRecordingState() {
-    if (_isRecording) {
-      _controller.stopListening();
+  Future<void> _initializeRecorder() async {
+    await _backendController.initRecorder();
+  }
+
+  Future<void> _toggleRecordingState() async {
+    if (_isProcessing) return; // Prevent actions while processing
+
+    if (!_isRecording) {
+      // Start recording
+      setState(() {
+        _isRecording = true;
+        _statusText = 'Recording...';
+        _isTranscriptionResult = false;
+      });
+      await _backendController.startRecording();
     } else {
-      _controller.startListening();
+      // Stop recording
+      setState(() {
+        _isRecording = false;
+        _isProcessing = true;
+        _statusText = 'Processing...';
+        _isTranscriptionResult = false;
+      });
+
+      final audioFilePath = await _backendController.stopRecording();
+
+      if (audioFilePath != null) {
+        // Send to API for transcription
+        final transcription = await ApiController.transcribeAudio(File(audioFilePath));
+
+        setState(() {
+          _isProcessing = false;
+          if (transcription != null && transcription.isNotEmpty) {
+            _statusText = transcription;
+            _isTranscriptionResult = true; // This is a transcription result
+          } else {
+            _statusText = 'Transcription failed. Please try again.';
+            _isTranscriptionResult = true; // This is a transcription result (error message)
+          }
+        });
+      } else {
+        setState(() {
+          _isProcessing = false;
+          _statusText = 'Press the microphone button to start transcribing your speech to text.';
+          _isTranscriptionResult = false;
+        });
+      }
     }
   }
 
-  // Helper method to convert text to sentence case
-  String _toSentenceCase(String text) {
-    if (text.isEmpty) return text;
-    
-    // Split by sentences (period followed by space)
-    final sentences = text.split('. ');
-    
-    // Convert each sentence to sentence case
-    final sentenceCased = sentences.map((sentence) {
-      if (sentence.isEmpty) return sentence;
-      // Capitalize first letter, keep rest as is
-      return sentence[0].toUpperCase() + sentence.substring(1).toLowerCase();
-    }).toList();
-    
-    // Join back with period and space
-    return sentenceCased.join('. ');
+  void _clearText() {
+    setState(() {
+      _statusText = 'Press the microphone button to start transcribing your speech to text.';
+      _isTranscriptionResult = false;
+    });
   }
 
-  String _getStatusText() {
-    if (_isRecording) {
-      return 'Recording...';
-    } else if (_isProcessing) {
-      return 'Processing...';
-    } else if (_transcription.isNotEmpty) {
-      return _toSentenceCase(_transcription);
-    } else {
-      return 'Press the microphone button to start transcribing your speech to text.';
+  // Method to handle translate button press
+  void _handleTranslate() {
+    // Only navigate if we have transcription text
+    if (_isTranscriptionResult && _statusText.isNotEmpty) {
+      Navigator.push(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              TextTranslator(initialText: _statusText),
+          transitionsBuilder: (
+            context,
+            animation,
+            secondaryAnimation,
+            child,
+          ) {
+            return child; // Instant transition
+          },
+        ),
+      );
     }
   }
 
-  Color _getStatusTextColor() {
-    if (_transcription.isNotEmpty && !_isRecording && !_isProcessing) {
-      return Colors.white; // White for transcription result
-    } else {
-      return const Color(0x809E9E9E); // Barely visible grey for instructions
-    }
+  @override
+  void dispose() {
+    _backendController.dispose();
+    super.dispose();
   }
 
   @override
@@ -319,14 +344,18 @@ class _SpeechToTextState extends State<SpeechToText> {
                         20.0,
                         10.0,
                       ),
-                      child: Text(
-                        _getStatusText(),
-                        style: TextStyle(
-                          color: _getStatusTextColor(),
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
+                      child: SingleChildScrollView(
+                        child: Text(
+                          _statusText,
+                          style: TextStyle(
+                            color: _isTranscriptionResult 
+                                ? Colors.white  // White text for transcription results
+                                : const Color(0x809E9E9E),  // Gray text for instructions
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.left,
                         ),
-                        textAlign: TextAlign.left,
                       ),
                     ),
                   ),
@@ -350,23 +379,8 @@ class _SpeechToTextState extends State<SpeechToText> {
                             ),
                             splashFactory: NoSplash.splashFactory,
                           ),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              PageRouteBuilder(
-                                pageBuilder: (context, animation, secondaryAnimation) =>
-                                    const TextTranslator(),
-                                transitionsBuilder: (
-                                  context,
-                                  animation,
-                                  secondaryAnimation,
-                                  child,
-                                ) {
-                                  return child;
-                                },
-                              ),
-                            );
-                          },
+                          // Update onPressed to use the new method
+                          onPressed: _isTranscriptionResult ? _handleTranslate : null,
                           child: const Text(
                             'Translate',
                             style: TextStyle(
@@ -380,8 +394,7 @@ class _SpeechToTextState extends State<SpeechToText> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: _isRecording ? Colors.black : Colors.white,
                             foregroundColor: _isRecording ? Colors.white : Colors.black,
-                            disabledBackgroundColor: Colors.grey[700],
-                            disabledForegroundColor: Colors.grey[300],
+                            disabledBackgroundColor: Colors.grey,
                             elevation: 0.0,
                             padding: const EdgeInsets.all(16),
                             minimumSize: const Size(60, 60),
@@ -394,7 +407,16 @@ class _SpeechToTextState extends State<SpeechToText> {
                             ),
                             splashFactory: NoSplash.splashFactory,
                           ),
-                          child: const Icon(Icons.mic, size: 35.0),
+                          child: _isProcessing
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.0,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  ),
+                                )
+                              : const Icon(Icons.mic, size: 35.0),
                         ),
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
@@ -408,11 +430,7 @@ class _SpeechToTextState extends State<SpeechToText> {
                               fontSize: 14,
                             ),
                           ),
-                          onPressed: () {
-                            setState(() {
-                              _transcription = '';
-                            });
-                          },
+                          onPressed: _clearText,
                           child: const Text(
                             'Clear text',
                             style: TextStyle(
