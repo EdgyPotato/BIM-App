@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:camera/camera.dart';
 import 'translator.dart'; // Import the translator.dart file
 import 'speechtotext.dart'; // Import the speechtotext.dart file
 import 'settings.dart'; // Import the settings.dart file
@@ -12,6 +13,44 @@ class SignTranslator extends StatefulWidget {
 
 class _SignTranslatorState extends State<SignTranslator> {
   bool _isInverted = false;
+  List<CameraDescription> _cameras = [];
+  CameraController? _cameraController;
+  bool _isCameraInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeCamera();
+  }
+
+  @override
+  void dispose() {
+    _cameraController?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _initializeCamera() async {
+    try {
+      _cameras = await availableCameras();
+      if (_cameras.isEmpty) return;
+
+      _cameraController = CameraController(
+        _cameras[0],
+        ResolutionPreset.high,
+        enableAudio: false,
+      );
+
+      await _cameraController!.initialize();
+      
+      if (mounted) {
+        setState(() {
+          _isCameraInitialized = true;
+        });
+      }
+    } catch (e) {
+      print('Error initializing camera: $e');
+    }
+  }
 
   void _toggleButtonState() {
     setState(() {
@@ -251,38 +290,47 @@ class _SignTranslatorState extends State<SignTranslator> {
                   Expanded(
                     flex: 2,
                     child: Container(
-                      alignment: Alignment.center,
-                      color: Colors.grey[850], // Added dark grey background
+                      color: Colors.grey[850],
                       child: Stack(
-                        // Added Stack to position the icon
                         children: [
-                          const Center(
-                            child: Text(
-                              'Camera Placeholder',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                              ), // Slightly larger font
+                          // Camera preview with ClipRect to cut off instead of resize
+                          if (_isCameraInitialized && _cameraController != null)
+                            ClipRect(
+                              child: SizedBox.expand(
+                                child: FittedBox(
+                                  fit: BoxFit.cover,
+                                  child: SizedBox(
+                                    width: _cameraController!.value.previewSize!.height,
+                                    height: _cameraController!.value.previewSize!.width,
+                                    child: CameraPreview(_cameraController!),
+                                  ),
+                                ),
+                              ),
+                            )
+                          else
+                            const Center(
+                              child: Text(
+                                'Initializing Camera...',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                ),
+                              ),
                             ),
-                          ),
                           Positioned(
-                            // Positioned the icon button
                             top: 5,
                             left: 10,
                             child: Builder(
-                              builder:
-                                  (context) => IconButton(
-                                    // This context is for the icon button's Scaffold.of
-                                    icon: const Icon(
-                                      Icons.menu,
-                                      color: Colors.white,
-                                      size: 35,
-                                    ),
-                                    onPressed: () {
-                                      // Use scaffoldContext from the Builder above for opening the main drawer
-                                      Scaffold.of(scaffoldContext).openDrawer();
-                                    },
-                                  ),
+                              builder: (context) => IconButton(
+                                icon: const Icon(
+                                  Icons.menu,
+                                  color: Colors.white,
+                                  size: 35,
+                                ),
+                                onPressed: () {
+                                  Scaffold.of(scaffoldContext).openDrawer();
+                                },
+                              ),
                             ),
                           ),
                         ],
