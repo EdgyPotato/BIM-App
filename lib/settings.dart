@@ -6,7 +6,7 @@ import 'detector.dart';
 import 'translator.dart';
 import 'speechtotext.dart';
 import 'main.dart'; // Add import for SplashScreen
-import 'api_controller.dart'; // Add import for API controller
+import 'backend/api_controller.dart'; // Add import for API controller
 
 // Settings model class to handle JSON operations
 class AppSettings {

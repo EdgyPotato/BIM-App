@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
-import 'translator.dart'; // Import the translator.dart file
-import 'speechtotext.dart'; // Import the speechtotext.dart file
-import 'settings.dart'; // Import the settings.dart file
+import 'package:ultralytics_yolo/yolo_result.dart';
+import 'package:ultralytics_yolo/yolo_view.dart';
+import 'backend/model_type.dart';
+import 'backend/model_manager.dart';
+import 'translator.dart';
+import 'speechtotext.dart';
+import 'settings.dart';
 
 class SignTranslator extends StatefulWidget {
   const SignTranslator({super.key});
@@ -12,15 +16,49 @@ class SignTranslator extends StatefulWidget {
 }
 
 class _SignTranslatorState extends State<SignTranslator> {
-  bool _isInverted = false;
+  bool _isInferenceMode = false; // Changed from _isInverted
   List<CameraDescription> _cameras = [];
   CameraController? _cameraController;
   bool _isCameraInitialized = false;
+  
+  // YOLO Detection variables
+  final _yoloController = YOLOViewController();
+  final _yoloViewKey = GlobalKey<YOLOViewState>(); // Add key for YOLOView
+  String? _modelPath;
+  bool _isModelLoading = false;
+  final ModelType _selectedModel = ModelType.detect;
+  String _detectedText = 'Text will be shown here';
+  late final ModelManager _modelManager;
+
+  // Detection confirmation system
+  final List<String> _confirmedDetections = [];
+  String? _currentDetection;
+  DateTime? _detectionStartTime;
+  DateTime? _lastDetectionTime;
+  bool _isWaitingForConfirmation = false;
+  bool _isInEmptyPeriod = false;
+
+  // Preset thresholds (no sliders needed)
+  final double _confidenceThreshold = 0.7;
+  final double _iouThreshold = 0.9;
+  final int _numItemsThreshold = 2;
 
   @override
   void initState() {
     super.initState();
     _initializeCamera();
+    
+    _modelManager = ModelManager(
+      onDownloadProgress: (progress) {
+        // Handle progress if needed
+      },
+      onStatusUpdate: (message) {
+        // Handle status updates if needed
+      },
+    );
+    
+    // Preload model
+    _loadModel();
   }
 
   @override
@@ -48,30 +86,165 @@ class _SignTranslatorState extends State<SignTranslator> {
         });
       }
     } catch (e) {
-      print('Error initializing camera: $e');
+      debugPrint('Error initializing camera: $e');
     }
   }
 
-  void _toggleButtonState() {
+  Future<void> _loadModel() async {
     setState(() {
-      _isInverted = !_isInverted;
+      _isModelLoading = true;
     });
+
+    try {
+      final modelPath = await _modelManager.getModelPath(_selectedModel);
+
+      if (mounted) {
+        setState(() {
+          _modelPath = modelPath;
+          _isModelLoading = false;
+        });
+
+        if (modelPath != null) {
+          debugPrint('Model loaded successfully: $modelPath');
+          
+          // Apply preset thresholds to controller
+          _yoloController.setThresholds(
+            confidenceThreshold: _confidenceThreshold,
+            iouThreshold: _iouThreshold,
+            numItemsThreshold: _numItemsThreshold,
+          );
+        } else {
+          debugPrint('Failed to load model');
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading model: $e');
+      if (mounted) {
+        setState(() {
+          _isModelLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _toggleInferenceMode() async {
+    if (_modelPath == null && !_isModelLoading) {
+      _loadModel();
+      return;
+    }
+
+    if (_isInferenceMode) {
+      // Switching from YOLOView to Camera
+      // Stop YOLOView and reinitialize camera
+      await _stopInferenceAndStartCamera();
+    } else {
+      // Switching from Camera to YOLOView
+      // Stop camera and start inference
+      await _stopCameraAndStartInference();
+    }
+  }
+
+  Future<void> _stopCameraAndStartInference() async {
+    // Dispose current camera controller
+    if (_cameraController != null) {
+      await _cameraController!.dispose();
+      _cameraController = null;
+    }
+
+    setState(() {
+      _isCameraInitialized = false;
+      _isInferenceMode = true;
+      // Reset detection state when starting inference
+      _resetDetectionState();
+    });
+  }
+
+  Future<void> _stopInferenceAndStartCamera() async {
+    setState(() {
+      _isInferenceMode = false;
+      // Keep confirmed detections and display them
+      _updateDetectedText();
+    });
+
+    // Reinitialize camera
+    await _initializeCamera();
+  }
+
+  void _resetDetectionState() {
+    _currentDetection = null;
+    _detectionStartTime = null;
+    _lastDetectionTime = null;
+    _isWaitingForConfirmation = false;
+    _isInEmptyPeriod = false;
+  }
+
+  void _updateDetectedText() {
+    if (_confirmedDetections.isEmpty) {
+      _detectedText = 'Text will be shown here';
+    } else {
+      _detectedText = _confirmedDetections.join(', ');
+    }
+  }
+  
+  void _onDetectionResults(List<YOLOResult> results) {
+    if (!mounted) return;
+
+    final now = DateTime.now();
+    
+    if (results.isNotEmpty) {
+      // Get the highest confidence detection
+      final bestResult = results.reduce((a, b) => a.confidence > b.confidence ? a : b);
+      final detectedClass = bestResult.className;
+      
+      _lastDetectionTime = now;
+      
+      if (_currentDetection == detectedClass) {
+        // Same detection continues
+        if (!_isWaitingForConfirmation && _detectionStartTime != null) {
+          // Check if 2 seconds have passed for confirmation
+          if (now.difference(_detectionStartTime!).inSeconds >= 2) {
+            _isWaitingForConfirmation = true;
+            
+            // Add to confirmed detections (always add, even if duplicate)
+            setState(() {
+              _confirmedDetections.add(detectedClass);
+              _updateDetectedText();
+            });
+          }
+        }
+      } else {
+        // New detection - start timing immediately for any new class
+        _currentDetection = detectedClass;
+        _detectionStartTime = now;
+        _isWaitingForConfirmation = false;
+        _isInEmptyPeriod = false;
+      }
+    } else {
+      // No detection
+      if (_lastDetectionTime != null && !_isInEmptyPeriod) {
+        // Check if 2 seconds have passed since last detection
+        if (now.difference(_lastDetectionTime!).inMilliseconds >= 2500) {
+          _isInEmptyPeriod = true;
+          _currentDetection = null;
+          _detectionStartTime = null;
+          _isWaitingForConfirmation = false;
+        }
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop:
-          true, // Allow app to close when back button is pressed on this screen
+      canPop: true,
       child: Scaffold(
         backgroundColor: Colors.black,
-        // change sidebar width size
         drawer: Drawer(
           backgroundColor: Colors.black,
           width: 0.8 * MediaQuery.of(context).size.width,
           child: Column(
             children: [
-              // App Header with logo/branding
+              // App Header
               Container(
                 padding: const EdgeInsets.symmetric(
                   vertical: 40.0,
@@ -99,7 +272,6 @@ class _SignTranslatorState extends State<SignTranslator> {
                 ),
               ),
 
-              // Divider
               const Divider(color: Colors.white24, thickness: 1, height: 1),
 
               // Navigation Items
@@ -125,7 +297,6 @@ class _SignTranslatorState extends State<SignTranslator> {
                         ),
                         onTap: () {
                           Navigator.pop(context);
-                          // Already on Detector page, just close drawer
                         },
                       ),
                     ),
@@ -142,16 +313,10 @@ class _SignTranslatorState extends State<SignTranslator> {
                         Navigator.push(
                           context,
                           PageRouteBuilder(
-                            pageBuilder:
-                                (context, animation, secondaryAnimation) =>
-                                    const SpeechToText(),
-                            transitionsBuilder: (
-                              context,
-                              animation,
-                              secondaryAnimation,
-                              child,
-                            ) {
-                              return child; // Instant transition
+                            pageBuilder: (context, animation, secondaryAnimation) =>
+                                const SpeechToText(),
+                            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                              return child;
                             },
                           ),
                         );
@@ -170,16 +335,10 @@ class _SignTranslatorState extends State<SignTranslator> {
                         Navigator.push(
                           context,
                           PageRouteBuilder(
-                            pageBuilder:
-                                (context, animation, secondaryAnimation) =>
-                                    const TextTranslator(),
-                            transitionsBuilder: (
-                              context,
-                              animation,
-                              secondaryAnimation,
-                              child,
-                            ) {
-                              return child; // Instant transition
+                            pageBuilder: (context, animation, secondaryAnimation) =>
+                                const TextTranslator(),
+                            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                              return child;
                             },
                           ),
                         );
@@ -198,16 +357,10 @@ class _SignTranslatorState extends State<SignTranslator> {
                         Navigator.push(
                           context,
                           PageRouteBuilder(
-                            pageBuilder:
-                                (context, animation, secondaryAnimation) =>
-                                    const Settings(),
-                            transitionsBuilder: (
-                              context,
-                              animation,
-                              secondaryAnimation,
-                              child,
-                            ) {
-                              return child; // Instant transition
+                            pageBuilder: (context, animation, secondaryAnimation) =>
+                                const Settings(),
+                            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                              return child;
                             },
                           ),
                         );
@@ -225,41 +378,23 @@ class _SignTranslatorState extends State<SignTranslator> {
                 ),
                 child: Column(
                   children: [
-                    const Divider(
-                      color: Colors.white24,
-                      thickness: 1,
-                      height: 1,
-                    ),
+                    const Divider(color: Colors.white24, thickness: 1, height: 1),
                     const SizedBox(height: 20),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         TextButton.icon(
-                          icon: const Icon(
-                            Icons.info_outline,
-                            color: Colors.white70,
-                          ),
-                          label: const Text(
-                            'About',
-                            style: TextStyle(color: Colors.white70),
-                          ),
+                          icon: const Icon(Icons.info_outline, color: Colors.white70),
+                          label: const Text('About', style: TextStyle(color: Colors.white70)),
                           onPressed: () {
                             Navigator.pop(context);
-                            // Show about dialog or navigate to about page
                           },
                         ),
                         TextButton.icon(
-                          icon: const Icon(
-                            Icons.help_outline,
-                            color: Colors.white70,
-                          ),
-                          label: const Text(
-                            'Help',
-                            style: TextStyle(color: Colors.white70),
-                          ),
+                          icon: const Icon(Icons.help_outline, color: Colors.white70),
+                          label: const Text('Help', style: TextStyle(color: Colors.white70)),
                           onPressed: () {
                             Navigator.pop(context);
-                            // Show help dialog or navigate to help page
                           },
                         ),
                       ],
@@ -270,20 +405,15 @@ class _SignTranslatorState extends State<SignTranslator> {
             ],
           ),
         ),
-        drawerEnableOpenDragGesture: true, // Explicitly enable drag gesture
-        drawerEdgeDragWidth:
-            MediaQuery.of(context)
-                .size
-                .width, // Allow dragging from anywhere for the default gesture
+        drawerEnableOpenDragGesture: true,
+        drawerEdgeDragWidth: MediaQuery.of(context).size.width,
         body: Builder(
-          // Wrap body with Builder to get context for Scaffold.of
           builder: (BuildContext scaffoldContext) {
             return GestureDetector(
               onHorizontalDragUpdate: (details) {
                 Scaffold.of(scaffoldContext).openDrawer();
               },
-              behavior:
-                  HitTestBehavior.translucent, // Capture taps on the whole area
+              behavior: HitTestBehavior.translucent,
               child: Column(
                 children: [
                   Container(color: Colors.black, height: 35.0),
@@ -293,8 +423,18 @@ class _SignTranslatorState extends State<SignTranslator> {
                       color: Colors.grey[850],
                       child: Stack(
                         children: [
-                          // Camera preview with ClipRect to cut off instead of resize
-                          if (_isCameraInitialized && _cameraController != null)
+                          // Conditional rendering based on inference mode
+                          if (_isInferenceMode && _modelPath != null && !_isModelLoading)
+                            // YOLOView for inference
+                            YOLOView(
+                              key: _yoloViewKey,
+                              modelPath: _modelPath!,
+                              task: _selectedModel.task,
+                              controller: _yoloController,
+                              onResult: _onDetectionResults,
+                            )
+                          else if (!_isInferenceMode && _isCameraInitialized && _cameraController != null)
+                            // Regular camera preview
                             ClipRect(
                               child: SizedBox.expand(
                                 child: FittedBox(
@@ -308,15 +448,27 @@ class _SignTranslatorState extends State<SignTranslator> {
                               ),
                             )
                           else
-                            const Center(
+                            Center(
                               child: Text(
-                                'Initializing Camera...',
-                                style: TextStyle(
+                                _isModelLoading 
+                                    ? 'Loading Model...' 
+                                    : 'Initializing Camera...',
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 18,
                                 ),
                               ),
                             ),
+                            
+                          // Loading indicator
+                          if (_isModelLoading)
+                            Container(
+                              color: Colors.black54,
+                              child: const Center(
+                                child: CircularProgressIndicator(color: Colors.white),
+                              ),
+                            ),
+                            
                           Positioned(
                             top: 5,
                             left: 10,
@@ -341,16 +493,13 @@ class _SignTranslatorState extends State<SignTranslator> {
                     flex: 2,
                     child: Container(
                       alignment: Alignment.topLeft,
-                      padding: const EdgeInsets.fromLTRB(
-                        20.0,
-                        20.0,
-                        20.0,
-                        10.0,
-                      ),
-                      child: const Text(
-                        'Text will be shown here',
+                      padding: const EdgeInsets.fromLTRB(20.0, 20.0, 20.0, 10.0),
+                      child: Text(
+                        _detectedText,
                         style: TextStyle(
-                          color: Color(0x809E9E9E), // Barely visible grey
+                          color: _detectedText != 'Text will be shown here'
+                              ? Colors.white 
+                              : const Color(0x809E9E9E),
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
                         ),
@@ -359,91 +508,72 @@ class _SignTranslatorState extends State<SignTranslator> {
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 30.0,
-                    ), // Adjusted padding
+                    padding: const EdgeInsets.symmetric(vertical: 30.0),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      // Changed to spaceEvenly for better distribution
                       children: [
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white,
                             foregroundColor: Colors.black,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 30,
-                              vertical: 20,
-                            ), // Added padding
-                            textStyle: const TextStyle(
-                              fontSize: 14,
-                            ), // Adjusted text style
-                            splashFactory: NoSplash.splashFactory, // Add NoSplash here
+                            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
+                            textStyle: const TextStyle(fontSize: 14),
+                            splashFactory: NoSplash.splashFactory,
                           ),
                           onPressed: () {
                             Navigator.push(
                               context,
                               PageRouteBuilder(
-                                pageBuilder:
-                                    (context, animation, secondaryAnimation) =>
-                                        const TextTranslator(),
-                                transitionsBuilder: (
-                                  context,
-                                  animation,
-                                  secondaryAnimation,
-                                  child,
-                                ) {
-                                  return child; // Instant transition
+                                pageBuilder: (context, animation, secondaryAnimation) =>
+                                    const TextTranslator(),
+                                transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                  return child;
                                 },
                               ),
                             );
                           },
                           child: const Text(
                             'Translate',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ), // Adjusted text style
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                           ),
                         ),
                         ElevatedButton(
-                          onPressed: _toggleButtonState,
+                          onPressed: _toggleInferenceMode,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _isInverted ? Colors.black : Colors.white,
-                            foregroundColor: _isInverted ? Colors.white : Colors.black,
-                            elevation: 0.0, // Remove floating effect
+                            backgroundColor: _isInferenceMode ? Colors.black : Colors.white,
+                            foregroundColor: _isInferenceMode ? Colors.white : Colors.black,
+                            elevation: 0.0,
                             padding: const EdgeInsets.all(16),
-                            minimumSize: const Size(60, 60), // Slightly larger to make it more prominent
+                            minimumSize: const Size(60, 60),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16.0),
                               side: BorderSide(
-                                color: _isInverted ? Colors.white : Colors.transparent,
+                                color: _isInferenceMode ? Colors.white : Colors.transparent,
                                 width: 3.0,
                               ),
                             ),
                             splashFactory: NoSplash.splashFactory,
                           ),
-                          child: const Icon(Icons.camera_alt, size: 35.0), // Slightly larger icon
+                          child: const Icon(Icons.camera_alt, size: 35.0),
                         ),
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white,
                             foregroundColor: Colors.black,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 30,
-                              vertical: 20,
-                            ), // Added padding
-                            textStyle: const TextStyle(
-                              fontSize: 14,
-                            ), // Adjusted text style
-                            splashFactory: NoSplash.splashFactory, // Add NoSplash here
+                            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
+                            textStyle: const TextStyle(fontSize: 14),
+                            splashFactory: NoSplash.splashFactory,
                           ),
-                          onPressed: () {},
+                          onPressed: () {
+                            setState(() {
+                              _detectedText = 'Text will be shown here';
+                              _confirmedDetections.clear();
+                              _resetDetectionState();
+                            });
+                          },
                           child: const Text(
                             'Clear text',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ), // Adjusted text style
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                           ),
                         ),
                       ],

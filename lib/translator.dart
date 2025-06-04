@@ -4,7 +4,7 @@ import 'package:flutter/gestures.dart'; // Added for DragStartBehavior
 import 'detector.dart'; // Import the main.dart file to access SignTranslator
 import 'speechtotext.dart'; // Import the speechtotext.dart file
 import 'settings.dart'; // Import the settings.dart file
-import 'api_controller.dart'; // Import the api_controller.dart file
+import 'backend/api_controller.dart'; // Import the api_controller.dart file
 
 class TextTranslator extends StatefulWidget {
   // Add parameter to accept initial text

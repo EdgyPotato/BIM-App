@@ -3,8 +3,8 @@ import 'dart:io';
 import 'detector.dart';
 import 'translator.dart';
 import 'settings.dart';
-import 'backend_controller.dart';
-import 'api_controller.dart';
+import 'backend/stt_controller.dart';
+import 'backend/api_controller.dart';
 
 class SpeechToText extends StatefulWidget {
   const SpeechToText({super.key});
