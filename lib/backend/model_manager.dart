@@ -1,5 +1,3 @@
-// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
-
 import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:flutter/foundation.dart';
@@ -8,17 +6,10 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'model_type.dart';
 
-/// Manages YOLO model loading, downloading, and caching.
-///
-/// This class handles:
-/// - Checking for existing models in the app bundle
-/// - Downloading models from the Ultralytics GitHub releases
-/// - Extracting and caching models locally
-/// - Platform-specific model path management
 class ModelManager {
   /// Base URL for downloading model files from GitHub releases
   static const String _modelDownloadBaseUrl =
-      'https://github.com/EdgyPotato/Yolo-Model/releases/download/v0.0.1';
+      'https://github.com/EdgyPotato/Yolo-Model/releases/latest/download';
 
   static const MethodChannel _channel = MethodChannel(
     'yolo_single_image_channel',
