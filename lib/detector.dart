@@ -3,7 +3,7 @@ import 'package:camera/camera.dart';
 import 'package:ultralytics_yolo/yolo_result.dart';
 import 'package:ultralytics_yolo/yolo_view.dart';
 import 'backend/model_type.dart';
-import 'backend/model_manager.dart';
+import 'backend/detector_backend.dart';
 import 'translator.dart';
 import 'speechtotext.dart';
 import 'settings.dart';

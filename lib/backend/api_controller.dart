@@ -11,6 +11,9 @@ class ApiController {
   static const String transcribeEndpoint = '$baseUrl/transcribe';
   static const String translateEndpoint = '$baseUrl/translate';
   
+  static const String modelDownloadBaseUrl =
+      'https://github.com/EdgyPotato/Yolo-Model/releases/latest/download';
+  
   // Check if the API is available
   static Future<bool> checkApiStatus() async {
     try {
@@ -131,5 +134,44 @@ class ApiController {
         debugPrint('Unknown file extension: $extension, using audio/wav as default');
         return MediaType('audio', 'wav');
     }
+  }
+
+  static Future<String?> downloadModel(
+    String modelName,
+    String destinationPath,
+    {void Function(double progress)? onProgress}
+  ) async {
+    final url = '$modelDownloadBaseUrl/$modelName.tflite';
+
+    try {
+      final client = http.Client();
+      final request = await client.send(http.Request('GET', Uri.parse(url)));
+      final contentLength = request.contentLength ?? 0;
+
+      final bytes = <int>[];
+      int downloadedBytes = 0;
+
+      await for (final chunk in request.stream) {
+        bytes.addAll(chunk);
+        downloadedBytes += chunk.length;
+
+        if (contentLength > 0) {
+          final progress = downloadedBytes / contentLength;
+          onProgress?.call(progress);
+        }
+      }
+
+      client.close();
+
+      if (bytes.isNotEmpty) {
+        final modelFile = File(destinationPath);
+        await modelFile.writeAsBytes(bytes);
+        return modelFile.path;
+      }
+    } catch (e) {
+      debugPrint('Failed to download model: $e');
+    }
+
+    return null;
   }
 }
