@@ -4,6 +4,7 @@ import 'package:ultralytics_yolo/yolo_result.dart';
 import 'package:ultralytics_yolo/yolo_view.dart';
 import 'backend/model_type.dart';
 import 'backend/detector_backend.dart';
+import 'backend/api_controller.dart'; // Add this import
 import 'translator.dart';
 import 'speechtotext.dart';
 import 'settings.dart';
@@ -42,6 +43,8 @@ class _SignTranslatorState extends State<SignTranslator> {
   final double _confidenceThreshold = 0.7;
   final double _iouThreshold = 0.9;
   final int _numItemsThreshold = 2;
+
+  bool _isReconstructing = false; // Add this variable
 
   @override
   void initState() {
@@ -162,9 +165,31 @@ class _SignTranslatorState extends State<SignTranslator> {
   Future<void> _stopInferenceAndStartCamera() async {
     setState(() {
       _isInferenceMode = false;
-      // Keep confirmed detections and display them
-      _updateDetectedText();
+      // If we have detections, show that we're processing them
+      if (_confirmedDetections.isNotEmpty) {
+        _isReconstructing = true;
+      }
     });
+
+    // Only call API if we have confirmed detections
+    if (_confirmedDetections.isNotEmpty) {
+      // Get the current text from confirmed detections
+      final currentText = _confirmedDetections.join(', ');
+      
+      // Call API to reconstruct text
+      final reconstructedText = await ApiController.reconstructText(currentText);
+      
+      if (mounted) {
+        setState(() {
+          // Use reconstructed text if available, otherwise use original text
+          _detectedText = reconstructedText ?? currentText;
+          _isReconstructing = false;
+        });
+      }
+    } else {
+      // If no detections, just update the text as before
+      _updateDetectedText();
+    }
 
     // Reinitialize camera
     await _initializeCamera();
@@ -494,17 +519,32 @@ class _SignTranslatorState extends State<SignTranslator> {
                     child: Container(
                       alignment: Alignment.topLeft,
                       padding: const EdgeInsets.fromLTRB(20.0, 20.0, 20.0, 10.0),
-                      child: Text(
-                        _detectedText,
-                        style: TextStyle(
-                          color: _detectedText != 'Text will be shown here'
-                              ? Colors.white 
-                              : const Color(0x809E9E9E),
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.left,
-                      ),
+                      child: _isReconstructing
+                          ? const Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Reconstructing text...',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 20,
+                                  ),
+                                ),
+                                SizedBox(height: 16),
+                                CircularProgressIndicator(color: Colors.white),
+                              ],
+                            )
+                          : Text(
+                              _detectedText,
+                              style: TextStyle(
+                                color: _detectedText != 'Text will be shown here'
+                                    ? Colors.white 
+                                    : const Color(0x809E9E9E),
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.left,
+                            ),
                     ),
                   ),
                   Padding(
@@ -521,11 +561,14 @@ class _SignTranslatorState extends State<SignTranslator> {
                             splashFactory: NoSplash.splashFactory,
                           ),
                           onPressed: () {
+                            // Only pass non-empty text to translator
+                            final textToTranslate = _detectedText != 'Text will be shown here' ? _detectedText : '';
+                            
                             Navigator.push(
                               context,
                               PageRouteBuilder(
                                 pageBuilder: (context, animation, secondaryAnimation) =>
-                                    const TextTranslator(),
+                                    TextTranslator(initialText: textToTranslate),
                                 transitionsBuilder: (context, animation, secondaryAnimation, child) {
                                   return child;
                                 },

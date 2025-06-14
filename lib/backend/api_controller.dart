@@ -11,8 +11,7 @@ class ApiController {
   static const String transcribeEndpoint = '$baseUrl/transcribe';
   static const String translateEndpoint = '$baseUrl/translate';
   
-  static const String modelDownloadBaseUrl =
-      'https://github.com/EdgyPotato/Yolo-Model/releases/latest/download';
+  static const String modelDownloadBaseUrl = 'https://github.com/EdgyPotato/Yolo-Model/releases/download/v0.0.3';
   
   // Check if the API is available
   static Future<bool> checkApiStatus() async {
@@ -99,6 +98,40 @@ class ApiController {
       }
     } catch (e) {
       debugPrint('Translation error: $e');
+      return null;
+    }
+  }
+  
+  // Send text for reconstruction
+  static Future<String?> reconstructText(String text) async {
+    try {
+      debugPrint('Sending text to reconstruction API');
+      
+      // Create request with JSON body
+      final response = await http.post(
+        Uri.parse('$baseUrl/reconstruct'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'text': text,
+          'temperature': 0.2,
+          'max_tokens': 100,
+          'top_p': 0.8
+        }),
+      );
+      
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+        final reconstructedText = jsonResponse['reconstructed_text'];
+        debugPrint('Reconstruction successful');
+        return reconstructedText;
+      } else {
+        debugPrint('API Error: ${response.statusCode}, ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('Reconstruction error: $e');
       return null;
     }
   }
