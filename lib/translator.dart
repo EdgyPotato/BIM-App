@@ -5,6 +5,8 @@ import 'detector.dart'; // Import the main.dart file to access SignTranslator
 import 'speechtotext.dart'; // Import the speechtotext.dart file
 import 'settings.dart'; // Import the settings.dart file
 import 'backend/api_controller.dart'; // Import the api_controller.dart file
+import 'database/translation_database.dart'; // Import the database helper
+import 'history.dart'; // Import the history page
 
 class TextTranslator extends StatefulWidget {
   // Add parameter to accept initial text
@@ -85,6 +87,14 @@ class _TextTranslatorState extends State<TextTranslator> {
         _translatedText =
             translatedText ?? 'Translation failed. Please try again.';
       });
+
+      // Save translation to database if successful
+      if (translatedText != null) {
+        await TranslationDatabase.instance.insertTranslation(
+          _textController.text,
+          translatedText,
+        );
+      }
     } catch (e) {
       setState(() {
         _isTranslating = false;
@@ -103,7 +113,7 @@ class _TextTranslatorState extends State<TextTranslator> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: true, // Changed to true to allow normal back button behavior
+      canPop: true,
       child: Scaffold(
         key: _scaffoldKey,
         resizeToAvoidBottomInset:
@@ -376,19 +386,47 @@ class _TextTranslatorState extends State<TextTranslator> {
                     height: 35.0,
                     alignment: Alignment.centerLeft,
                     margin: const EdgeInsets.only(top: 40.0, bottom: 10.0),
-                    padding: const EdgeInsets.only(left: 10.0),
-                    child: Builder(
-                      builder: (context) => IconButton(
-                        icon: const Icon(
-                          Icons.menu,
-                          color: Colors.white,
-                          size: 35,
+                    padding: const EdgeInsets.only(left: 10.0, right: 10.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Builder(
+                          builder: (context) => IconButton(
+                            icon: const Icon(
+                              Icons.menu,
+                              color: Colors.white,
+                              size: 35,
+                            ),
+                            onPressed: () {
+                              _handleDrawerOpen(scaffoldContext);
+                            },
+                          ),
                         ),
-                        onPressed: () {
-                          // Use the simplified drawer opening
-                          _handleDrawerOpen(scaffoldContext);
-                        },
-                      ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.history,
+                            color: Colors.white,
+                            size: 35,
+                          ),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              PageRouteBuilder(
+                                pageBuilder: (context, animation, secondaryAnimation) =>
+                                    const HistoryPage(),
+                                transitionsBuilder: (
+                                  context,
+                                  animation,
+                                  secondaryAnimation,
+                                  child,
+                                ) {
+                                  return child; // Instant transition
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ),
                   ),
                   Expanded(

@@ -17,7 +17,8 @@ class _SpeechToTextState extends State<SpeechToText> {
   final BackendController _backendController = BackendController();
   bool _isRecording = false;
   bool _isProcessing = false;
-  String _statusText = 'Press the microphone button to start transcribing your speech to text.';
+  bool _isHolding = false; // New state for tracking hold gesture
+  String _statusText = 'Hold the microphone button to start transcribing your speech to text.';
   bool _isTranscriptionResult = false; // Flag to track if statusText contains transcription
 
   @override
@@ -30,55 +31,57 @@ class _SpeechToTextState extends State<SpeechToText> {
     await _backendController.initRecorder();
   }
 
-  Future<void> _toggleRecordingState() async {
-    if (_isProcessing) return; // Prevent actions while processing
+  Future<void> _startRecording() async {
+    if (_isProcessing) return;
 
-    if (!_isRecording) {
-      // Start recording
+    setState(() {
+      _isRecording = true;
+      _isHolding = true;
+      _statusText = 'Recording...';
+      _isTranscriptionResult = false;
+    });
+    await _backendController.startRecording();
+  }
+
+  Future<void> _stopRecording() async {
+    if (!_isRecording) return;
+
+    setState(() {
+      _isRecording = false;
+      _isHolding = false;
+      _isProcessing = true;
+      _statusText = 'Processing...';
+      _isTranscriptionResult = false;
+    });
+
+    final audioFilePath = await _backendController.stopRecording();
+
+    if (audioFilePath != null) {
+      // Send to API for transcription
+      final transcription = await ApiController.transcribeAudio(File(audioFilePath));
+
       setState(() {
-        _isRecording = true;
-        _statusText = 'Recording...';
-        _isTranscriptionResult = false;
+        _isProcessing = false;
+        if (transcription != null && transcription.isNotEmpty) {
+          _statusText = transcription.trim(); // Trim whitespace from transcription
+          _isTranscriptionResult = true; // This is a transcription result
+        } else {
+          _statusText = 'Transcription failed. Please try again.';
+          _isTranscriptionResult = true; // This is a transcription result (error message)
+        }
       });
-      await _backendController.startRecording();
     } else {
-      // Stop recording
       setState(() {
-        _isRecording = false;
-        _isProcessing = true;
-        _statusText = 'Processing...';
+        _isProcessing = false;
+        _statusText = 'Hold the microphone button to start transcribing your speech to text.';
         _isTranscriptionResult = false;
       });
-
-      final audioFilePath = await _backendController.stopRecording();
-
-      if (audioFilePath != null) {
-        // Send to API for transcription
-        final transcription = await ApiController.transcribeAudio(File(audioFilePath));
-
-        setState(() {
-          _isProcessing = false;
-          if (transcription != null && transcription.isNotEmpty) {
-            _statusText = transcription;
-            _isTranscriptionResult = true; // This is a transcription result
-          } else {
-            _statusText = 'Transcription failed. Please try again.';
-            _isTranscriptionResult = true; // This is a transcription result (error message)
-          }
-        });
-      } else {
-        setState(() {
-          _isProcessing = false;
-          _statusText = 'Press the microphone button to start transcribing your speech to text.';
-          _isTranscriptionResult = false;
-        });
-      }
     }
   }
 
   void _clearText() {
     setState(() {
-      _statusText = 'Press the microphone button to start transcribing your speech to text.';
+      _statusText = 'Hold the microphone button to start transcribing your speech to text.';
       _isTranscriptionResult = false;
     });
   }
@@ -389,34 +392,34 @@ class _SpeechToTextState extends State<SpeechToText> {
                             ),
                           ),
                         ),
-                        ElevatedButton(
-                          onPressed: _isProcessing ? null : _toggleRecordingState,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _isRecording ? Colors.black : Colors.white,
-                            foregroundColor: _isRecording ? Colors.white : Colors.black,
-                            disabledBackgroundColor: Colors.grey,
-                            elevation: 0.0,
-                            padding: const EdgeInsets.all(16),
-                            minimumSize: const Size(60, 60),
-                            shape: RoundedRectangleBorder(
+                        GestureDetector(
+                          onTapDown: (_) => _startRecording(),
+                          onTapUp: (_) => _stopRecording(),
+                          onTapCancel: () => _stopRecording(),
+                          child: Container(
+                            width: 70,
+                            height: 70,
+                            decoration: BoxDecoration(
+                              color: _isHolding ? Colors.black : Colors.white,
                               borderRadius: BorderRadius.circular(16.0),
-                              side: BorderSide(
-                                color: _isRecording ? Colors.white : Colors.transparent,
+                              border: Border.all(
+                                color: _isHolding ? Colors.white : Colors.transparent,
                                 width: 3.0,
                               ),
                             ),
-                            splashFactory: NoSplash.splashFactory,
+                            child: Center(
+                              child: _isProcessing
+                                  ? const CircularProgressIndicator(
+                                      strokeWidth: 2.0,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                                    )
+                                  : Icon(
+                                      Icons.mic,
+                                      size: 35.0,
+                                      color: _isHolding ? Colors.white : Colors.black,
+                                    ),
+                            ),
                           ),
-                          child: _isProcessing
-                              ? const SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.0,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                  ),
-                                )
-                              : const Icon(Icons.mic, size: 35.0),
                         ),
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
