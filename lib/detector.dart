@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:ultralytics_yolo/yolo_result.dart';
 import 'package:ultralytics_yolo/yolo_view.dart';
+import 'package:ultralytics_yolo/yolo_streaming_config.dart';
 import 'backend/model_type.dart';
 import 'backend/detector_backend.dart';
 import 'backend/api_controller.dart'; // Add this import
@@ -21,7 +22,7 @@ class _SignTranslatorState extends State<SignTranslator> {
   List<CameraDescription> _cameras = [];
   CameraController? _cameraController;
   bool _isCameraInitialized = false;
-  
+
   // YOLO Detection variables
   final _yoloController = YOLOViewController();
   final _yoloViewKey = GlobalKey<YOLOViewState>(); // Add key for YOLOView
@@ -50,7 +51,7 @@ class _SignTranslatorState extends State<SignTranslator> {
   void initState() {
     super.initState();
     _initializeCamera();
-    
+
     _modelManager = ModelManager(
       onDownloadProgress: (progress) {
         // Handle progress if needed
@@ -59,7 +60,7 @@ class _SignTranslatorState extends State<SignTranslator> {
         // Handle status updates if needed
       },
     );
-    
+
     // Preload model
     _loadModel();
   }
@@ -82,7 +83,7 @@ class _SignTranslatorState extends State<SignTranslator> {
       );
 
       await _cameraController!.initialize();
-      
+
       if (mounted) {
         setState(() {
           _isCameraInitialized = true;
@@ -109,7 +110,7 @@ class _SignTranslatorState extends State<SignTranslator> {
 
         if (modelPath != null) {
           debugPrint('Model loaded successfully: $modelPath');
-          
+
           // Apply preset thresholds to controller
           _yoloController.setThresholds(
             confidenceThreshold: _confidenceThreshold,
@@ -175,10 +176,12 @@ class _SignTranslatorState extends State<SignTranslator> {
     if (_confirmedDetections.isNotEmpty) {
       // Get the current text from confirmed detections
       final currentText = _confirmedDetections.join(', ');
-      
+
       // Call API to reconstruct text
-      final reconstructedText = await ApiController.reconstructText(currentText);
-      
+      final reconstructedText = await ApiController.reconstructText(
+        currentText,
+      );
+
       if (mounted) {
         setState(() {
           // Use reconstructed text if available, otherwise use original text
@@ -210,26 +213,28 @@ class _SignTranslatorState extends State<SignTranslator> {
       _detectedText = _confirmedDetections.join(', ');
     }
   }
-  
+
   void _onDetectionResults(List<YOLOResult> results) {
     if (!mounted) return;
 
     final now = DateTime.now();
-    
+
     if (results.isNotEmpty) {
       // Get the highest confidence detection
-      final bestResult = results.reduce((a, b) => a.confidence > b.confidence ? a : b);
+      final bestResult = results.reduce(
+        (a, b) => a.confidence > b.confidence ? a : b,
+      );
       final detectedClass = bestResult.className;
-      
+
       _lastDetectionTime = now;
-      
+
       if (_currentDetection == detectedClass) {
         // Same detection continues
         if (!_isWaitingForConfirmation && _detectionStartTime != null) {
           // Check if 2 seconds have passed for confirmation
           if (now.difference(_detectionStartTime!).inSeconds >= 2) {
             _isWaitingForConfirmation = true;
-            
+
             // Add to confirmed detections (always add, even if duplicate)
             setState(() {
               _confirmedDetections.add(detectedClass);
@@ -338,9 +343,15 @@ class _SignTranslatorState extends State<SignTranslator> {
                         Navigator.push(
                           context,
                           PageRouteBuilder(
-                            pageBuilder: (context, animation, secondaryAnimation) =>
-                                const SpeechToText(),
-                            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                            pageBuilder:
+                                (context, animation, secondaryAnimation) =>
+                                    const SpeechToText(),
+                            transitionsBuilder: (
+                              context,
+                              animation,
+                              secondaryAnimation,
+                              child,
+                            ) {
                               return child;
                             },
                           ),
@@ -360,9 +371,15 @@ class _SignTranslatorState extends State<SignTranslator> {
                         Navigator.push(
                           context,
                           PageRouteBuilder(
-                            pageBuilder: (context, animation, secondaryAnimation) =>
-                                const TextTranslator(),
-                            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                            pageBuilder:
+                                (context, animation, secondaryAnimation) =>
+                                    const TextTranslator(),
+                            transitionsBuilder: (
+                              context,
+                              animation,
+                              secondaryAnimation,
+                              child,
+                            ) {
                               return child;
                             },
                           ),
@@ -382,9 +399,15 @@ class _SignTranslatorState extends State<SignTranslator> {
                         Navigator.push(
                           context,
                           PageRouteBuilder(
-                            pageBuilder: (context, animation, secondaryAnimation) =>
-                                const Settings(),
-                            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                            pageBuilder:
+                                (context, animation, secondaryAnimation) =>
+                                    const Settings(),
+                            transitionsBuilder: (
+                              context,
+                              animation,
+                              secondaryAnimation,
+                              child,
+                            ) {
                               return child;
                             },
                           ),
@@ -403,21 +426,37 @@ class _SignTranslatorState extends State<SignTranslator> {
                 ),
                 child: Column(
                   children: [
-                    const Divider(color: Colors.white24, thickness: 1, height: 1),
+                    const Divider(
+                      color: Colors.white24,
+                      thickness: 1,
+                      height: 1,
+                    ),
                     const SizedBox(height: 20),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         TextButton.icon(
-                          icon: const Icon(Icons.info_outline, color: Colors.white70),
-                          label: const Text('About', style: TextStyle(color: Colors.white70)),
+                          icon: const Icon(
+                            Icons.info_outline,
+                            color: Colors.white70,
+                          ),
+                          label: const Text(
+                            'About',
+                            style: TextStyle(color: Colors.white70),
+                          ),
                           onPressed: () {
                             Navigator.pop(context);
                           },
                         ),
                         TextButton.icon(
-                          icon: const Icon(Icons.help_outline, color: Colors.white70),
-                          label: const Text('Help', style: TextStyle(color: Colors.white70)),
+                          icon: const Icon(
+                            Icons.help_outline,
+                            color: Colors.white70,
+                          ),
+                          label: const Text(
+                            'Help',
+                            style: TextStyle(color: Colors.white70),
+                          ),
                           onPressed: () {
                             Navigator.pop(context);
                           },
@@ -449,7 +488,9 @@ class _SignTranslatorState extends State<SignTranslator> {
                       child: Stack(
                         children: [
                           // Conditional rendering based on inference mode
-                          if (_isInferenceMode && _modelPath != null && !_isModelLoading)
+                          if (_isInferenceMode &&
+                              _modelPath != null &&
+                              !_isModelLoading)
                             // YOLOView for inference
                             YOLOView(
                               key: _yoloViewKey,
@@ -457,16 +498,31 @@ class _SignTranslatorState extends State<SignTranslator> {
                               task: _selectedModel.task,
                               controller: _yoloController,
                               onResult: _onDetectionResults,
+                              streamingConfig: YOLOStreamingConfig.throttled(
+                                maxFPS: 30,
+                                includeMasks: false,
+                                includeOriginalImage: false,
+                              ),
                             )
-                          else if (!_isInferenceMode && _isCameraInitialized && _cameraController != null)
+                          else if (!_isInferenceMode &&
+                              _isCameraInitialized &&
+                              _cameraController != null)
                             // Regular camera preview
                             ClipRect(
                               child: SizedBox.expand(
                                 child: FittedBox(
                                   fit: BoxFit.cover,
                                   child: SizedBox(
-                                    width: _cameraController!.value.previewSize!.height,
-                                    height: _cameraController!.value.previewSize!.width,
+                                    width:
+                                        _cameraController!
+                                            .value
+                                            .previewSize!
+                                            .height,
+                                    height:
+                                        _cameraController!
+                                            .value
+                                            .previewSize!
+                                            .width,
                                     child: CameraPreview(_cameraController!),
                                   ),
                                 ),
@@ -475,8 +531,8 @@ class _SignTranslatorState extends State<SignTranslator> {
                           else
                             Center(
                               child: Text(
-                                _isModelLoading 
-                                    ? 'Loading Model...' 
+                                _isModelLoading
+                                    ? 'Loading Model...'
                                     : 'Initializing Camera...',
                                 style: const TextStyle(
                                   color: Colors.white,
@@ -484,30 +540,33 @@ class _SignTranslatorState extends State<SignTranslator> {
                                 ),
                               ),
                             ),
-                            
+
                           // Loading indicator
                           if (_isModelLoading)
                             Container(
                               color: Colors.black54,
                               child: const Center(
-                                child: CircularProgressIndicator(color: Colors.white),
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                ),
                               ),
                             ),
-                            
+
                           Positioned(
                             top: 5,
                             left: 10,
                             child: Builder(
-                              builder: (context) => IconButton(
-                                icon: const Icon(
-                                  Icons.menu,
-                                  color: Colors.white,
-                                  size: 35,
-                                ),
-                                onPressed: () {
-                                  Scaffold.of(scaffoldContext).openDrawer();
-                                },
-                              ),
+                              builder:
+                                  (context) => IconButton(
+                                    icon: const Icon(
+                                      Icons.menu,
+                                      color: Colors.white,
+                                      size: 35,
+                                    ),
+                                    onPressed: () {
+                                      Scaffold.of(scaffoldContext).openDrawer();
+                                    },
+                                  ),
                             ),
                           ),
                         ],
@@ -518,33 +577,42 @@ class _SignTranslatorState extends State<SignTranslator> {
                     flex: 2,
                     child: Container(
                       alignment: Alignment.topLeft,
-                      padding: const EdgeInsets.fromLTRB(20.0, 20.0, 20.0, 10.0),
-                      child: _isReconstructing
-                          ? const Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Reconstructing text...',
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 20,
+                      padding: const EdgeInsets.fromLTRB(
+                        20.0,
+                        20.0,
+                        20.0,
+                        10.0,
+                      ),
+                      child:
+                          _isReconstructing
+                              ? const Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Reconstructing text...',
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 20,
+                                    ),
                                   ),
+                                  SizedBox(height: 16),
+                                  CircularProgressIndicator(
+                                    color: Colors.white,
+                                  ),
+                                ],
+                              )
+                              : Text(
+                                _detectedText,
+                                style: TextStyle(
+                                  color:
+                                      _detectedText != 'Text will be shown here'
+                                          ? Colors.white
+                                          : const Color(0x809E9E9E),
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
                                 ),
-                                SizedBox(height: 16),
-                                CircularProgressIndicator(color: Colors.white),
-                              ],
-                            )
-                          : Text(
-                              _detectedText,
-                              style: TextStyle(
-                                color: _detectedText != 'Text will be shown here'
-                                    ? Colors.white 
-                                    : const Color(0x809E9E9E),
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
+                                textAlign: TextAlign.left,
                               ),
-                              textAlign: TextAlign.left,
-                            ),
                     ),
                   ),
                   Padding(
@@ -556,20 +624,34 @@ class _SignTranslatorState extends State<SignTranslator> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white,
                             foregroundColor: Colors.black,
-                            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 30,
+                              vertical: 20,
+                            ),
                             textStyle: const TextStyle(fontSize: 14),
                             splashFactory: NoSplash.splashFactory,
                           ),
                           onPressed: () {
                             // Only pass non-empty text to translator
-                            final textToTranslate = _detectedText != 'Text will be shown here' ? _detectedText : '';
-                            
+                            final textToTranslate =
+                                _detectedText != 'Text will be shown here'
+                                    ? _detectedText
+                                    : '';
+
                             Navigator.push(
                               context,
                               PageRouteBuilder(
-                                pageBuilder: (context, animation, secondaryAnimation) =>
-                                    TextTranslator(initialText: textToTranslate),
-                                transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                pageBuilder:
+                                    (context, animation, secondaryAnimation) =>
+                                        TextTranslator(
+                                          initialText: textToTranslate,
+                                        ),
+                                transitionsBuilder: (
+                                  context,
+                                  animation,
+                                  secondaryAnimation,
+                                  child,
+                                ) {
                                   return child;
                                 },
                               ),
@@ -577,21 +659,29 @@ class _SignTranslatorState extends State<SignTranslator> {
                           },
                           child: const Text(
                             'Translate',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                         ElevatedButton(
                           onPressed: _toggleInferenceMode,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _isInferenceMode ? Colors.black : Colors.white,
-                            foregroundColor: _isInferenceMode ? Colors.white : Colors.black,
+                            backgroundColor:
+                                _isInferenceMode ? Colors.black : Colors.white,
+                            foregroundColor:
+                                _isInferenceMode ? Colors.white : Colors.black,
                             elevation: 0.0,
                             padding: const EdgeInsets.all(16),
                             minimumSize: const Size(60, 60),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16.0),
                               side: BorderSide(
-                                color: _isInferenceMode ? Colors.white : Colors.transparent,
+                                color:
+                                    _isInferenceMode
+                                        ? Colors.white
+                                        : Colors.transparent,
                                 width: 3.0,
                               ),
                             ),
@@ -603,7 +693,10 @@ class _SignTranslatorState extends State<SignTranslator> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white,
                             foregroundColor: Colors.black,
-                            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 30,
+                              vertical: 20,
+                            ),
                             textStyle: const TextStyle(fontSize: 14),
                             splashFactory: NoSplash.splashFactory,
                           ),
@@ -616,7 +709,10 @@ class _SignTranslatorState extends State<SignTranslator> {
                           },
                           child: const Text(
                             'Clear text',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ],
