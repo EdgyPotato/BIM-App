@@ -547,6 +547,19 @@ class _TextTranslatorState extends State<TextTranslator> {
                             ),
                     ),
                   ),
+                  // Add disclaimer above buttons
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                    child: Text(
+                      'Translation powered by AI. Results may include mistakes.',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.6),
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
                   Padding(
                     padding: const EdgeInsets.symmetric(
                       vertical: 30.0,

@@ -526,7 +526,7 @@ class _SettingsState extends State<Settings> {
                           child: const Text(
                             'Save',
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 16,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -547,7 +547,7 @@ class _SettingsState extends State<Settings> {
                           child: const Text(
                             'Reset',
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 16,
                               fontWeight: FontWeight.bold,
                             ),
                           ),

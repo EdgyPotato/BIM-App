@@ -5,7 +5,7 @@ import 'package:ultralytics_yolo/yolo_view.dart';
 import 'package:ultralytics_yolo/yolo_streaming_config.dart';
 import 'backend/model_type.dart';
 import 'backend/detector_backend.dart';
-import 'backend/api_controller.dart'; // Add this import
+import 'backend/api_controller.dart';
 import 'translator.dart';
 import 'speechtotext.dart';
 import 'settings.dart';
@@ -18,14 +18,14 @@ class SignTranslator extends StatefulWidget {
 }
 
 class _SignTranslatorState extends State<SignTranslator> {
-  bool _isInferenceMode = false; // Changed from _isInverted
+  bool _isInferenceMode = false;
   List<CameraDescription> _cameras = [];
   CameraController? _cameraController;
   bool _isCameraInitialized = false;
 
   // YOLO Detection variables
   final _yoloController = YOLOViewController();
-  final _yoloViewKey = GlobalKey<YOLOViewState>(); // Add key for YOLOView
+  final _yoloViewKey = GlobalKey<YOLOViewState>();
   String? _modelPath;
   bool _isModelLoading = false;
   final ModelType _selectedModel = ModelType.detect;
@@ -40,12 +40,12 @@ class _SignTranslatorState extends State<SignTranslator> {
   bool _isWaitingForConfirmation = false;
   bool _isInEmptyPeriod = false;
 
-  // Preset thresholds (no sliders needed)
+  // Preset thresholds
   final double _confidenceThreshold = 0.7;
-  final double _iouThreshold = 0.9;
+  final double _iouThreshold = 0.8;
   final int _numItemsThreshold = 2;
 
-  bool _isReconstructing = false; // Add this variable
+  bool _isReconstructing = false;
 
   @override
   void initState() {
