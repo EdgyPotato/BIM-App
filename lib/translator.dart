@@ -5,7 +5,7 @@ import 'detector.dart'; // Import the main.dart file to access SignTranslator
 import 'speechtotext.dart'; // Import the speechtotext.dart file
 import 'settings.dart'; // Import the settings.dart file
 import 'backend/api_controller.dart'; // Import the api_controller.dart file
-import 'backend/translation_database.dart'; // Import the database helper
+import 'backend/database.dart'; // Import the database helper
 import 'history.dart'; // Import the history page
 
 class TextTranslator extends StatefulWidget {

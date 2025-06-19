@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'backend/translation_database.dart';
+import 'backend/database.dart';
 import 'translator.dart';
 
 class HistoryPage extends StatefulWidget {

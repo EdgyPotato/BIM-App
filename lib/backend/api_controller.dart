@@ -175,36 +175,82 @@ class ApiController {
     {void Function(double progress)? onProgress}
   ) async {
     final url = '$modelDownloadBaseUrl/$modelName.tflite';
-
+    
     try {
+      debugPrint('Starting model download from: $url');
+      debugPrint('Destination path: $destinationPath');
+      
       final client = http.Client();
-      final request = await client.send(http.Request('GET', Uri.parse(url)));
-      final contentLength = request.contentLength ?? 0;
-
+      
+      // Add timeout and better error handling
+      final request = http.Request('GET', Uri.parse(url));
+      final streamedResponse = await client.send(request)
+          .timeout(const Duration(minutes: 10));
+      
+      // Check if the response is successful
+      if (streamedResponse.statusCode != 200) {
+        debugPrint('Download failed with status code: ${streamedResponse.statusCode}');
+        debugPrint('Response reason: ${streamedResponse.reasonPhrase}');
+        client.close();
+        return null;
+      }
+      
+      final contentLength = streamedResponse.contentLength ?? 0;
+      debugPrint('Content length: $contentLength bytes');
+      
+      if (contentLength == 0) {
+        debugPrint('Warning: Content length is 0 or unknown');
+      }
+      
       final bytes = <int>[];
       int downloadedBytes = 0;
-
-      await for (final chunk in request.stream) {
+      
+      await for (final chunk in streamedResponse.stream) {
         bytes.addAll(chunk);
         downloadedBytes += chunk.length;
-
+        
         if (contentLength > 0) {
           final progress = downloadedBytes / contentLength;
+          debugPrint('Download progress: ${(progress * 100).toStringAsFixed(1)}%');
           onProgress?.call(progress);
         }
       }
-
+      
       client.close();
-
-      if (bytes.isNotEmpty) {
-        final modelFile = File(destinationPath);
-        await modelFile.writeAsBytes(bytes);
-        return modelFile.path;
+      
+      if (bytes.isEmpty) {
+        debugPrint('Error: No data received from server');
+        return null;
       }
+      
+      debugPrint('Download completed. Total bytes: ${bytes.length}');
+      
+      // Ensure the destination directory exists
+      final modelFile = File(destinationPath);
+      final directory = modelFile.parent;
+      if (!await directory.exists()) {
+        debugPrint('Creating directory: ${directory.path}');
+        await directory.create(recursive: true);
+      }
+      
+      // Write the file
+      await modelFile.writeAsBytes(bytes);
+      debugPrint('Model saved successfully to: ${modelFile.path}');
+      
+      // Verify the file was written correctly
+      if (await modelFile.exists()) {
+        final fileSize = await modelFile.length();
+        debugPrint('File verification: Size = $fileSize bytes');
+        return modelFile.path;
+      } else {
+        debugPrint('Error: File was not saved properly');
+        return null;
+      }
+      
     } catch (e) {
       debugPrint('Failed to download model: $e');
+      debugPrint('Stack trace: ${StackTrace.current}');
+      return null;
     }
-
-    return null;
   }
 }
