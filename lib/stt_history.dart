@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 import 'backend/database.dart';
 
 class SpeechHistoryPage extends StatefulWidget {
@@ -34,8 +35,57 @@ class _SpeechHistoryPageState extends State<SpeechHistoryPage> {
     }
   }
 
+  // Format file size for display
+  String _formatFileSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+
+  // Get file information
+  Future<Map<String, dynamic>> _getFileInfo(String filePath) async {
+    try {
+      final file = File(filePath);
+      if (await file.exists()) {
+        final size = await file.length();
+        final fileName = filePath.split('/').last;
+        return {
+          'exists': true,
+          'size': size,
+          'fileName': fileName,
+          'fullPath': filePath,
+        };
+      }
+    } catch (e) {
+      debugPrint('Error getting file info: $e');
+    }
+    
+    return {
+      'exists': false,
+      'size': 0,
+      'fileName': 'File not found',
+      'fullPath': filePath,
+    };
+  }
+
   Future<void> _deleteSpeechHistory(int id) async {
+    // Get the speech record first to access audio file path
+    final speechRecord = _speechHistory.firstWhere((s) => s.id == id);
+    
+    // Delete from database
     await TranslationDatabase.instance.deleteSpeechHistory(id);
+    
+    // Delete associated audio file
+    try {
+      final file = File(speechRecord.originalAudio);
+      if (await file.exists()) {
+        await file.delete();
+        debugPrint('Deleted audio file: ${speechRecord.originalAudio}');
+      }
+    } catch (e) {
+      debugPrint('Error deleting audio file: $e');
+    }
+    
     _loadSpeechHistory();
   }
 
@@ -50,7 +100,7 @@ class _SpeechHistoryPageState extends State<SpeechHistoryPage> {
             style: TextStyle(color: Colors.white),
           ),
           content: const Text(
-            'Are you sure you want to delete all speech-to-text history?',
+            'Are you sure you want to delete all speech-to-text history and associated audio files?',
             style: TextStyle(color: Colors.white70),
           ),
           actions: [
@@ -61,6 +111,20 @@ class _SpeechHistoryPageState extends State<SpeechHistoryPage> {
             TextButton(
               onPressed: () async {
                 Navigator.pop(context);
+                
+                // Delete all audio files
+                for (final speech in _speechHistory) {
+                  try {
+                    final file = File(speech.originalAudio);
+                    if (await file.exists()) {
+                      await file.delete();
+                    }
+                  } catch (e) {
+                    debugPrint('Error deleting audio file: $e');
+                  }
+                }
+                
+                // Clear database
                 await TranslationDatabase.instance.clearAllSpeechHistory();
                 _loadSpeechHistory();
               },
@@ -114,7 +178,7 @@ class _SpeechHistoryPageState extends State<SpeechHistoryPage> {
             style: const TextStyle(color: Colors.white),
           ),
           content: Text(
-            'Are you sure you want to delete the selected speech record${_selectedItems.length > 1 ? 's' : ''}?',
+            'Are you sure you want to delete the selected speech record${_selectedItems.length > 1 ? 's' : ''} and associated audio files?',
             style: const TextStyle(color: Colors.white70),
           ),
           actions: [
@@ -125,9 +189,27 @@ class _SpeechHistoryPageState extends State<SpeechHistoryPage> {
             TextButton(
               onPressed: () async {
                 Navigator.pop(context);
+                
+                // Delete both database records and audio files for selected items
                 for (int id in _selectedItems) {
+                  // Find the speech record to get audio file path
+                  final speechRecord = _speechHistory.firstWhere((s) => s.id == id);
+                  
+                  // Delete from database
                   await TranslationDatabase.instance.deleteSpeechHistory(id);
+                  
+                  // Delete associated audio file
+                  try {
+                    final file = File(speechRecord.originalAudio);
+                    if (await file.exists()) {
+                      await file.delete();
+                      debugPrint('Deleted audio file: ${speechRecord.originalAudio}');
+                    }
+                  } catch (e) {
+                    debugPrint('Error deleting audio file: $e');
+                  }
                 }
+                
                 _exitSelectionMode();
                 _loadSpeechHistory();
               },
@@ -266,6 +348,64 @@ class _SpeechHistoryPageState extends State<SpeechHistoryPage> {
                                             ),
                                         ],
                                       ),
+                                      const SizedBox(height: 8),
+                                      const Text(
+                                        'Audio File:',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      FutureBuilder<Map<String, dynamic>>(
+                                        future: _getFileInfo(speech.originalAudio),
+                                        builder: (context, snapshot) {
+                                          if (!snapshot.hasData) {
+                                            return const Text(
+                                              'Loading file info...',
+                                              style: TextStyle(
+                                                color: Colors.white70,
+                                                fontSize: 14,
+                                                fontStyle: FontStyle.italic,
+                                              ),
+                                            );
+                                          }
+                                          
+                                          final fileInfo = snapshot.data!;
+                                          return Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                fileInfo['fileName'],
+                                                style: TextStyle(
+                                                  color: fileInfo['exists'] ? Colors.white70 : Colors.red,
+                                                  fontSize: 14,
+                                                  fontStyle: FontStyle.italic,
+                                                ),
+                                              ),
+                                              if (fileInfo['exists']) ...[
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  'Size: ${_formatFileSize(fileInfo['size'])}',
+                                                  style: const TextStyle(
+                                                    color: Colors.white54,
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                              ] else
+                                                const Text(
+                                                  'File not found',
+                                                  style: TextStyle(
+                                                    color: Colors.red,
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                            ],
+                                          );
+                                        },
+                                      ),
+                                      const SizedBox(height: 12),
                                       const Text(
                                         'Transcription:',
                                         style: TextStyle(

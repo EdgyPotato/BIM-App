@@ -77,6 +77,17 @@ class _HistoryPageState extends State<HistoryPage> {
     return '${dateTime.day}/${dateTime.month}/${dateTime.year} ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 
+  String _getLanguageDisplayName(String languageCode) {
+    switch (languageCode) {
+      case 'malay':
+        return 'Malay';
+      case 'chinese':
+        return 'Chinese';
+      default:
+        return languageCode.toUpperCase();
+    }
+  }
+
   void _enterSelectionMode(int id) {
     setState(() {
       _isSelectionMode = true;
@@ -239,7 +250,7 @@ class _HistoryPageState extends State<HistoryPage> {
                             Expanded(
                               child: Card(
                                 color: isSelected ? Colors.blue.withValues(alpha: 0.3) : Colors.grey[900],
-                                margin: EdgeInsets.zero, // Remove card's default margin
+                                margin: EdgeInsets.zero,
                                 child: Padding(
                                   padding: const EdgeInsets.all(16),
                                   child: Column(
@@ -248,11 +259,27 @@ class _HistoryPageState extends State<HistoryPage> {
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
-                                          Text(
-                                            _formatDateTime(translation.timestamp),
-                                            style: const TextStyle(
-                                              color: Colors.white70,
-                                              fontSize: 12,
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  _formatDateTime(translation.timestamp),
+                                                  style: const TextStyle(
+                                                    color: Colors.white70,
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  'Translated to ${_getLanguageDisplayName(translation.targetLanguage)}',
+                                                  style: const TextStyle(
+                                                    color: Colors.blue,
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ),
                                           if (!_isSelectionMode)

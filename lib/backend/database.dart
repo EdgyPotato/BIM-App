@@ -5,12 +5,14 @@ class TranslationHistory {
   final int? id;
   final String originalText;
   final String translatedText;
+  final String targetLanguage; // Add target language field
   final DateTime timestamp;
 
   TranslationHistory({
     this.id,
     required this.originalText,
     required this.translatedText,
+    required this.targetLanguage,
     required this.timestamp,
   });
 
@@ -19,6 +21,7 @@ class TranslationHistory {
       'id': id,
       'originalText': originalText,
       'translatedText': translatedText,
+      'targetLanguage': targetLanguage,
       'timestamp': timestamp.millisecondsSinceEpoch,
     };
   }
@@ -28,6 +31,7 @@ class TranslationHistory {
       id: map['id'],
       originalText: map['originalText'],
       translatedText: map['translatedText'],
+      targetLanguage: map['targetLanguage'] ?? 'malay', // Default fallback
       timestamp: DateTime.fromMillisecondsSinceEpoch(map['timestamp']),
     );
   }
@@ -111,7 +115,7 @@ class TranslationDatabase {
 
     return await openDatabase(
       path,
-      version: 4,
+      version: 5, // Bump version to 5
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -123,6 +127,7 @@ class TranslationDatabase {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         originalText TEXT NOT NULL,
         translatedText TEXT NOT NULL,
+        targetLanguage TEXT NOT NULL DEFAULT 'malay',
         timestamp INTEGER NOT NULL
       )
     ''');
@@ -184,13 +189,32 @@ class TranslationDatabase {
         ALTER TABLE settings ADD COLUMN translationLanguage TEXT NOT NULL DEFAULT 'malay'
       ''');
     }
+
+    if (oldVersion < 5) {
+      await db.execute('''
+        ALTER TABLE translations ADD COLUMN targetLanguage TEXT NOT NULL DEFAULT 'malay'
+      ''');
+    }
   }
 
-  Future<int> insertTranslation(String originalText, String translatedText) async {
+  Future<int> insertTranslation(String originalText, String translatedText, {String? targetLanguage}) async {
     final db = await instance.database;
+    
+    // Get current language setting if not provided
+    String language = targetLanguage ?? 'malay';
+    if (targetLanguage == null) {
+      try {
+        final settings = await getSettings();
+        language = settings.translationLanguage;
+      } catch (e) {
+        language = 'malay'; // fallback
+      }
+    }
+    
     final translation = TranslationHistory(
       originalText: originalText,
       translatedText: translatedText,
+      targetLanguage: language,
       timestamp: DateTime.now(),
     );
 

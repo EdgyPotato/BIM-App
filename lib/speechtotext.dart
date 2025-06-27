@@ -27,10 +27,20 @@ class _SpeechToTextState extends State<SpeechToText> {
   void initState() {
     super.initState();
     _initializeRecorder();
+    _cleanupOldFiles(); // Clean up old audio files on startup
   }
 
   Future<void> _initializeRecorder() async {
     await _backendController.initRecorder();
+  }
+
+  // Clean up old audio files periodically
+  Future<void> _cleanupOldFiles() async {
+    try {
+      await BackendController.cleanupOldAudioFiles();
+    } catch (e) {
+      debugPrint('Error during cleanup: $e');
+    }
   }
 
   Future<void> _startRecording() async {
@@ -58,7 +68,7 @@ class _SpeechToTextState extends State<SpeechToText> {
 
     final audioFilePath = await _backendController.stopRecording();
 
-    if (audioFilePath != null) {
+    if (audioFilePath != null && await BackendController.audioFileExists(audioFilePath)) {
       // Send to API for transcription
       final transcription = await ApiController.transcribeAudio(File(audioFilePath));
 
@@ -68,17 +78,20 @@ class _SpeechToTextState extends State<SpeechToText> {
           _statusText = transcription.trim();
           _isTranscriptionResult = true;
           
-          // Save to database
+          // Save to database with file path
           _saveSpeechHistory(audioFilePath, transcription.trim());
         } else {
           _statusText = 'Transcription failed. Please try again.';
           _isTranscriptionResult = true;
+          
+          // Delete failed recording file
+          _deleteAudioFile(audioFilePath);
         }
       });
     } else {
       setState(() {
         _isProcessing = false;
-        _statusText = 'Hold the microphone button to start transcribing your speech to text.';
+        _statusText = 'Recording failed. Please try again.';
         _isTranscriptionResult = false;
       });
     }
@@ -88,8 +101,22 @@ class _SpeechToTextState extends State<SpeechToText> {
   Future<void> _saveSpeechHistory(String audioPath, String transcription) async {
     try {
       await TranslationDatabase.instance.insertSpeechHistory(audioPath, transcription);
+      debugPrint('Saved speech history with audio file: $audioPath');
     } catch (e) {
       debugPrint('Error saving speech history: $e');
+    }
+  }
+
+  // Delete audio file if transcription failed
+  Future<void> _deleteAudioFile(String filePath) async {
+    try {
+      final file = File(filePath);
+      if (await file.exists()) {
+        await file.delete();
+        debugPrint('Deleted failed audio file: $filePath');
+      }
+    } catch (e) {
+      debugPrint('Error deleting audio file: $e');
     }
   }
 
