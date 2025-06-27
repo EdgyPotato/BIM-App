@@ -5,6 +5,8 @@ import 'translator.dart';
 import 'settings.dart';
 import 'backend/stt_controller.dart';
 import 'backend/api_controller.dart';
+import 'backend/database.dart';
+import 'stt_history.dart';
 
 class SpeechToText extends StatefulWidget {
   const SpeechToText({super.key});
@@ -63,11 +65,14 @@ class _SpeechToTextState extends State<SpeechToText> {
       setState(() {
         _isProcessing = false;
         if (transcription != null && transcription.isNotEmpty) {
-          _statusText = transcription.trim(); // Trim whitespace from transcription
-          _isTranscriptionResult = true; // This is a transcription result
+          _statusText = transcription.trim();
+          _isTranscriptionResult = true;
+          
+          // Save to database
+          _saveSpeechHistory(audioFilePath, transcription.trim());
         } else {
           _statusText = 'Transcription failed. Please try again.';
-          _isTranscriptionResult = true; // This is a transcription result (error message)
+          _isTranscriptionResult = true;
         }
       });
     } else {
@@ -76,6 +81,15 @@ class _SpeechToTextState extends State<SpeechToText> {
         _statusText = 'Hold the microphone button to start transcribing your speech to text.';
         _isTranscriptionResult = false;
       });
+    }
+  }
+
+  // Save speech-to-text history to database
+  Future<void> _saveSpeechHistory(String audioPath, String transcription) async {
+    try {
+      await TranslationDatabase.instance.insertSpeechHistory(audioPath, transcription);
+    } catch (e) {
+      debugPrint('Error saving speech history: $e');
     }
   }
 
@@ -254,6 +268,33 @@ class _SpeechToTextState extends State<SpeechToText> {
                         );
                       },
                     ),
+                    // Add History option
+                    ListTile(
+                      leading: const Icon(Icons.history, color: Colors.white),
+                      title: const Text(
+                        'Speech History',
+                        style: TextStyle(color: Colors.white, fontSize: 16),
+                      ),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          PageRouteBuilder(
+                            pageBuilder:
+                                (context, animation, secondaryAnimation) =>
+                                    const SpeechHistoryPage(),
+                            transitionsBuilder: (
+                              context,
+                              animation,
+                              secondaryAnimation,
+                              child,
+                            ) {
+                              return child;
+                            },
+                          ),
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -318,23 +359,53 @@ class _SpeechToTextState extends State<SpeechToText> {
               behavior: HitTestBehavior.translucent,
               child: Column(
                 children: [
+                  // App bar with menu button and history icon
                   Container(
                     color: Colors.black,
                     height: 35.0,
                     alignment: Alignment.centerLeft,
                     margin: const EdgeInsets.only(top: 40.0, bottom: 10.0),
-                    padding: const EdgeInsets.only(left: 10.0),
-                    child: Builder(
-                      builder: (context) => IconButton(
-                        icon: const Icon(
-                          Icons.menu,
-                          color: Colors.white,
-                          size: 35,
+                    padding: const EdgeInsets.only(left: 10.0, right: 10.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Builder(
+                          builder: (context) => IconButton(
+                            icon: const Icon(
+                              Icons.menu,
+                              color: Colors.white,
+                              size: 35,
+                            ),
+                            onPressed: () {
+                              Scaffold.of(scaffoldContext).openDrawer();
+                            },
+                          ),
                         ),
-                        onPressed: () {
-                          Scaffold.of(scaffoldContext).openDrawer();
-                        },
-                      ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.history,
+                            color: Colors.white,
+                            size: 30,
+                          ),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              PageRouteBuilder(
+                                pageBuilder: (context, animation, secondaryAnimation) =>
+                                    const SpeechHistoryPage(),
+                                transitionsBuilder: (
+                                  context,
+                                  animation,
+                                  secondaryAnimation,
+                                  child,
+                                ) {
+                                  return child;
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ),
                   ),
                   Expanded(

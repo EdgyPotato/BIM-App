@@ -6,7 +6,7 @@ import 'speechtotext.dart'; // Import the speechtotext.dart file
 import 'settings.dart'; // Import the settings.dart file
 import 'backend/api_controller.dart'; // Import the api_controller.dart file
 import 'backend/database.dart'; // Import the database helper
-import 'history.dart'; // Import the history page
+import 'translation_history.dart'; // Import the history page
 
 class TextTranslator extends StatefulWidget {
   // Add parameter to accept initial text
@@ -32,10 +32,12 @@ class _TextTranslatorState extends State<TextTranslator> {
   // Add state for translation
   String _translatedText = '';
   bool _isTranslating = false;
+  String _currentLanguage = 'Malay'; // Add current language display
 
   @override
   void initState() {
     super.initState();
+    _loadLanguagePreference();
 
     // Set initial text if provided
     if (widget.initialText != null && widget.initialText!.isNotEmpty) {
@@ -56,6 +58,25 @@ class _TextTranslatorState extends State<TextTranslator> {
         _isTextEmpty = _textController.text.isEmpty;
       });
     });
+  }
+
+  // Load user's language preference
+  Future<void> _loadLanguagePreference() async {
+    try {
+      final settings = await TranslationDatabase.instance.getSettings();
+      final languageMap = {
+        'malay': 'Malay',
+        'chinese': 'Chinese',
+      };
+
+      if (mounted) {
+        setState(() {
+          _currentLanguage = languageMap[settings.translationLanguage] ?? 'Malay';
+        });
+      }
+    } catch (e) {
+      // Keep default if error occurs
+    }
   }
 
   // Simplified drawer opening function
@@ -550,20 +571,33 @@ class _TextTranslatorState extends State<TextTranslator> {
                   // Add disclaimer above buttons
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                    child: Text(
-                      'Translation powered by AI. Results may include mistakes.',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.6),
-                        fontSize: 12,
-                        fontStyle: FontStyle.italic,
-                      ),
-                      textAlign: TextAlign.center,
+                    child: Column(
+                      children: [
+                        Text(
+                          'Translation powered by AI. Results may include mistakes.',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.6),
+                            fontSize: 12,
+                            fontStyle: FontStyle.italic,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          'Translating to: $_currentLanguage',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.8),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 30.0,
-                    ), // Adjusted padding
+                    // Adjusted only bottom padding
+                    padding: const EdgeInsets.fromLTRB(0, 10, 0, 30),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [

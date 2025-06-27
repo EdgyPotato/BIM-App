@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:path/path.dart' as path;
 import 'package:http_parser/http_parser.dart';
+import 'database.dart';
 
 class ApiController {
   static const String baseUrl = 'https://bim-backend-api.onrender.com';
@@ -67,10 +68,23 @@ class ApiController {
     }
   }
   
-  // Send text for translation
-  static Future<String?> translateText(String text, {String targetLang = 'malay'}) async {
+  // Get user's preferred translation language
+  static Future<String> getUserTranslationLanguage() async {
     try {
-      debugPrint('Sending text to translation API, target language: $targetLang');
+      final settings = await TranslationDatabase.instance.getSettings();
+      return settings.translationLanguage;
+    } catch (e) {
+      debugPrint('Error getting translation language: $e');
+      return 'malay'; // Default fallback
+    }
+  }
+
+  // Send text for translation (updated to use user's preferred language by default)
+  static Future<String?> translateText(String text, {String? targetLang}) async {
+    try {
+      // Use provided language or get user's preferred language
+      final language = targetLang ?? await getUserTranslationLanguage();
+      debugPrint('Sending text to translation API, target language: $language');
       
       // Create request with JSON body
       final response = await http.post(
@@ -80,7 +94,7 @@ class ApiController {
         },
         body: jsonEncode({
           'text': text,
-          'target_lang': targetLang,
+          'target_lang': language,
           'temperature': 0.2,
           'max_tokens': 100,
           'top_p': 0.7

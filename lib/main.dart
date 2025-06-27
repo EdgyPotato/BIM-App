@@ -57,7 +57,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (!mounted) return;
 
-    // Load settings
+    // Load settings from database
     final settings = await AppSettings.loadSettings();
 
     // Update state

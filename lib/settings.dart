@@ -1,64 +1,51 @@
-import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
 import 'detector.dart';
 import 'translator.dart';
 import 'speechtotext.dart';
-import 'main.dart'; // Add import for SplashScreen
-import 'backend/api_controller.dart'; // Add import for API controller
+import 'main.dart';
+import 'backend/api_controller.dart';
+import 'backend/database.dart'; // Add import for database
 
-// Settings model class to handle JSON operations
+// Settings model class to handle SQLite operations
 class AppSettings {
   bool isFirstTime;
   String defaultPage;
+  String translationLanguage;
 
-  AppSettings({this.isFirstTime = true, this.defaultPage = 'detector'});
+  AppSettings({
+    this.isFirstTime = true, 
+    this.defaultPage = 'detector',
+    this.translationLanguage = 'malay',
+  });
 
-  // Create from JSON
-  factory AppSettings.fromJson(Map<String, dynamic> json) {
+  // Create from database model
+  factory AppSettings.fromModel(AppSettingsModel model) {
     return AppSettings(
-      isFirstTime: json['isFirstTime'] ?? true,
-      defaultPage: json['defaultPage'] ?? 'detector',
+      isFirstTime: model.isFirstTime,
+      defaultPage: model.defaultPage,
+      translationLanguage: model.translationLanguage,
     );
   }
 
-  // Convert to JSON
-  Map<String, dynamic> toJson() {
-    return {'isFirstTime': isFirstTime, 'defaultPage': defaultPage};
+  // Convert to database model
+  AppSettingsModel toModel() {
+    return AppSettingsModel(
+      isFirstTime: isFirstTime,
+      defaultPage: defaultPage,
+      translationLanguage: translationLanguage,
+    );
   }
 
-  // Get settings file path
-  static Future<String> get _localPath async {
-    final directory = await getApplicationDocumentsDirectory();
-    return directory.path;
+  // Save settings to database
+  Future<void> saveSettings() async {
+    await TranslationDatabase.instance.saveSettings(toModel());
   }
 
-  // Get settings file
-  static Future<File> get _localFile async {
-    final path = await _localPath;
-    return File('$path/settings.json');
-  }
-
-  // Save settings to file
-  Future<File> saveSettings() async {
-    final file = await _localFile;
-    return file.writeAsString(jsonEncode(toJson()));
-  }
-
-  // Load settings from file
+  // Load settings from database
   static Future<AppSettings> loadSettings() async {
     try {
-      final file = await _localFile;
-      if (await file.exists()) {
-        final contents = await file.readAsString();
-        return AppSettings.fromJson(jsonDecode(contents));
-      } else {
-        // First time - create default settings
-        final defaultSettings = AppSettings();
-        await defaultSettings.saveSettings();
-        return defaultSettings;
-      }
+      final model = await TranslationDatabase.instance.getSettings();
+      return AppSettings.fromModel(model);
     } catch (e) {
       // If there's an error, return default settings
       return AppSettings();
@@ -77,38 +64,47 @@ class _SettingsState extends State<Settings> {
   AppSettings _settings = AppSettings();
   bool _isLoading = true;
   String _selectedPage = 'detector';
+  String _selectedLanguage = 'malay';
   bool _hasChanges = false;
-  bool _showAdvancedSettings = false; // Added to control dropdown visibility
+  bool _showAdvancedSettings = false;
 
   // API Status variables
   bool _isApiConnected = false;
   bool _isCheckingApi = false;
 
+  // Translation language options
+  final Map<String, String> _languageOptions = {
+    'malay': 'Malay',
+    'chinese': 'Chinese',
+  };
+
   @override
   void initState() {
     super.initState();
     _loadSettings();
-    _checkApiStatus(); // Check API status when page loads
+    _checkApiStatus();
   }
 
-  // Load settings from file
+  // Load settings from database
   Future<void> _loadSettings() async {
     final loadedSettings = await AppSettings.loadSettings();
-    if (!mounted) return; // Add mounted check
+    if (!mounted) return;
     setState(() {
       _settings = loadedSettings;
       _selectedPage = _settings.defaultPage;
+      _selectedLanguage = _settings.translationLanguage;
       _isLoading = false;
     });
   }
 
-  // Save settings to file
+  // Save settings to database
   Future<void> _saveSettings() async {
     // Store if we're in reset mode before saving
     final bool resetToFirstTime = _settings.isFirstTime;
 
     setState(() {
       _settings.defaultPage = _selectedPage;
+      _settings.translationLanguage = _selectedLanguage;
     });
 
     await _settings.saveSettings();
@@ -146,6 +142,7 @@ class _SettingsState extends State<Settings> {
   void _resetSettings() {
     setState(() {
       _selectedPage = _settings.defaultPage;
+      _selectedLanguage = _settings.translationLanguage;
       _hasChanges = false;
     });
   }
@@ -325,8 +322,8 @@ class _SettingsState extends State<Settings> {
                             onChanged: (value) {
                               setState(() {
                                 _selectedPage = value!;
-                                _hasChanges =
-                                    _selectedPage != _settings.defaultPage;
+                                _hasChanges = _selectedPage != _settings.defaultPage ||
+                                    _selectedLanguage != _settings.translationLanguage;
                               });
                             },
                           ),
@@ -341,8 +338,8 @@ class _SettingsState extends State<Settings> {
                             onChanged: (value) {
                               setState(() {
                                 _selectedPage = value!;
-                                _hasChanges =
-                                    _selectedPage != _settings.defaultPage;
+                                _hasChanges = _selectedPage != _settings.defaultPage ||
+                                    _selectedLanguage != _settings.translationLanguage;
                               });
                             },
                           ),
@@ -352,6 +349,46 @@ class _SettingsState extends State<Settings> {
                             'When the app starts, it will open the selected page by default.',
                             style: TextStyle(color: Colors.grey, fontSize: 14),
                           ),
+                          
+                          const SizedBox(height: 30),
+                          const Divider(color: Colors.white24, thickness: 1),
+                          const SizedBox(height: 20),
+
+                          // Translation Language Section
+                          const Text(
+                            'Translation Language',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 15),
+
+                          // Radio buttons for translation language selection
+                          ..._languageOptions.entries.map((entry) => RadioListTile<String>(
+                            title: Text(
+                              entry.value,
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                            value: entry.key,
+                            groupValue: _selectedLanguage,
+                            activeColor: Colors.blue,
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedLanguage = value!;
+                                _hasChanges = _selectedPage != _settings.defaultPage ||
+                                    _selectedLanguage != _settings.translationLanguage;
+                              });
+                            },
+                          )),
+
+                          const SizedBox(height: 20),
+                          const Text(
+                            'Text will be translated to the selected language.',
+                            style: TextStyle(color: Colors.grey, fontSize: 14),
+                          ),
+
                           const SizedBox(height: 30),
 
                           // API Status Section
