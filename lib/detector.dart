@@ -41,8 +41,8 @@ class _SignTranslatorState extends State<SignTranslator> {
   bool _isInEmptyPeriod = false;
 
   // Preset thresholds
-  final double _confidenceThreshold = 0.7;
-  final double _iouThreshold = 0.8;
+  final double _confidenceThreshold = 0.65;
+  final double _iouThreshold = 0.9;
   final int _numItemsThreshold = 2;
 
   bool _isReconstructing = false;

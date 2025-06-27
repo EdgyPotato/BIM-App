@@ -11,7 +11,7 @@ class ApiController {
   static const String transcribeEndpoint = '$baseUrl/transcribe';
   static const String translateEndpoint = '$baseUrl/translate';
   
-  static const String modelDownloadBaseUrl = 'https://github.com/EdgyPotato/Yolo-Model/releases/download/v0.0.3';
+  static const String modelDownloadBaseUrl = 'https://github.com/EdgyPotato/Yolo-Model/releases/download/v0.0.4';
   
   // Check if the API is available
   static Future<bool> checkApiStatus() async {
