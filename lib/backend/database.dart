@@ -115,7 +115,7 @@ class TranslationDatabase {
 
     return await openDatabase(
       path,
-      version: 5, // Bump version to 5
+      version: 1, // Set version to 1, as all schema is now in initial create
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -158,43 +158,7 @@ class TranslationDatabase {
   }
 
   Future _upgradeDB(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 2) {
-      await db.execute('''
-        CREATE TABLE settings (
-          isFirstTime INTEGER NOT NULL DEFAULT 1,
-          defaultPage TEXT NOT NULL DEFAULT 'detector'
-        )
-      ''');
-
-      // Insert default settings
-      await db.insert('settings', {
-        'isFirstTime': 1,
-        'defaultPage': 'detector',
-      });
-    }
-
-    if (oldVersion < 3) {
-      await db.execute('''
-        CREATE TABLE speech_history (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          originalAudio TEXT NOT NULL,
-          transcribedText TEXT NOT NULL,
-          timestamp INTEGER NOT NULL
-        )
-      ''');
-    }
-
-    if (oldVersion < 4) {
-      await db.execute('''
-        ALTER TABLE settings ADD COLUMN translationLanguage TEXT NOT NULL DEFAULT 'malay'
-      ''');
-    }
-
-    if (oldVersion < 5) {
-      await db.execute('''
-        ALTER TABLE translations ADD COLUMN targetLanguage TEXT NOT NULL DEFAULT 'malay'
-      ''');
-    }
+    // Reserved for future schema upgrades
   }
 
   Future<int> insertTranslation(String originalText, String translatedText, {String? targetLanguage}) async {
