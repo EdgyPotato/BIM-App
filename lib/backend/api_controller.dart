@@ -71,7 +71,7 @@ class ApiController {
   // Get user's preferred translation language
   static Future<String> getUserTranslationLanguage() async {
     try {
-      final settings = await TranslationDatabase.instance.getSettings();
+      final settings = await AppDatabase.instance.getSettings();
       return settings.translationLanguage;
     } catch (e) {
       debugPrint('Error getting translation language: $e');

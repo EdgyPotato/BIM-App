@@ -23,7 +23,7 @@ class _SpeechHistoryPageState extends State<SpeechHistoryPage> {
 
   Future<void> _loadSpeechHistory() async {
     try {
-      final speechHistory = await TranslationDatabase.instance.getAllSpeechHistory();
+      final speechHistory = await AppDatabase.instance.getAllSpeechHistory();
       setState(() {
         _speechHistory = speechHistory;
         _isLoading = false;
@@ -73,7 +73,7 @@ class _SpeechHistoryPageState extends State<SpeechHistoryPage> {
     final speechRecord = _speechHistory.firstWhere((s) => s.id == id);
     
     // Delete from database
-    await TranslationDatabase.instance.deleteSpeechHistory(id);
+    await AppDatabase.instance.deleteSpeechHistory(id);
     
     // Delete associated audio file
     try {
@@ -125,7 +125,7 @@ class _SpeechHistoryPageState extends State<SpeechHistoryPage> {
                 }
                 
                 // Clear database
-                await TranslationDatabase.instance.clearAllSpeechHistory();
+                await AppDatabase.instance.clearAllSpeechHistory();
                 _loadSpeechHistory();
               },
               child: const Text('Clear All', style: TextStyle(color: Colors.red)),
@@ -196,7 +196,7 @@ class _SpeechHistoryPageState extends State<SpeechHistoryPage> {
                   final speechRecord = _speechHistory.firstWhere((s) => s.id == id);
                   
                   // Delete from database
-                  await TranslationDatabase.instance.deleteSpeechHistory(id);
+                  await AppDatabase.instance.deleteSpeechHistory(id);
                   
                   // Delete associated audio file
                   try {

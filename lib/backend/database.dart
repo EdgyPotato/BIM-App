@@ -97,11 +97,11 @@ class SpeechHistory {
   }
 }
 
-class TranslationDatabase {
-  static final TranslationDatabase instance = TranslationDatabase._init();
+class AppDatabase {
+  static final AppDatabase instance = AppDatabase._init();
   static Database? _database;
 
-  TranslationDatabase._init();
+  AppDatabase._init();
 
   Future<Database> get database async {
     if (_database != null) return _database!;

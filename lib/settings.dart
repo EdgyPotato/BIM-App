@@ -38,13 +38,13 @@ class AppSettings {
 
   // Save settings to database
   Future<void> saveSettings() async {
-    await TranslationDatabase.instance.saveSettings(toModel());
+    await AppDatabase.instance.saveSettings(toModel());
   }
 
   // Load settings from database
   static Future<AppSettings> loadSettings() async {
     try {
-      final model = await TranslationDatabase.instance.getSettings();
+      final model = await AppDatabase.instance.getSettings();
       return AppSettings.fromModel(model);
     } catch (e) {
       // If there's an error, return default settings

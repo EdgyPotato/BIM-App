@@ -63,7 +63,7 @@ class _TextTranslatorState extends State<TextTranslator> {
   // Load user's language preference
   Future<void> _loadLanguagePreference() async {
     try {
-      final settings = await TranslationDatabase.instance.getSettings();
+      final settings = await AppDatabase.instance.getSettings();
       final languageMap = {
         'malay': 'Malay',
         'chinese': 'Chinese',
@@ -111,7 +111,7 @@ class _TextTranslatorState extends State<TextTranslator> {
 
       // Save translation to database if successful
       if (translatedText != null) {
-        await TranslationDatabase.instance.insertTranslation(
+        await AppDatabase.instance.insertTranslation(
           _textController.text,
           translatedText,
         );

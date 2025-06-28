@@ -23,7 +23,7 @@ class _HistoryPageState extends State<HistoryPage> {
 
   Future<void> _loadTranslations() async {
     try {
-      final translations = await TranslationDatabase.instance.getAllTranslations();
+      final translations = await AppDatabase.instance.getAllTranslations();
       setState(() {
         _translations = translations;
         _isLoading = false;
@@ -36,7 +36,7 @@ class _HistoryPageState extends State<HistoryPage> {
   }
 
   Future<void> _deleteTranslation(int id) async {
-    await TranslationDatabase.instance.deleteTranslation(id);
+    await AppDatabase.instance.deleteTranslation(id);
     _loadTranslations();
   }
 
@@ -62,7 +62,7 @@ class _HistoryPageState extends State<HistoryPage> {
             TextButton(
               onPressed: () async {
                 Navigator.pop(context);
-                await TranslationDatabase.instance.clearAllTranslations();
+                await AppDatabase.instance.clearAllTranslations();
                 _loadTranslations();
               },
               child: const Text('Clear All', style: TextStyle(color: Colors.red)),
@@ -138,7 +138,7 @@ class _HistoryPageState extends State<HistoryPage> {
               onPressed: () async {
                 Navigator.pop(context);
                 for (int id in _selectedItems) {
-                  await TranslationDatabase.instance.deleteTranslation(id);
+                  await AppDatabase.instance.deleteTranslation(id);
                 }
                 _exitSelectionMode();
                 _loadTranslations();

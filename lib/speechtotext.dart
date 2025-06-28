@@ -100,7 +100,7 @@ class _SpeechToTextState extends State<SpeechToText> {
   // Save speech-to-text history to database
   Future<void> _saveSpeechHistory(String audioPath, String transcription) async {
     try {
-      await TranslationDatabase.instance.insertSpeechHistory(audioPath, transcription);
+      await AppDatabase.instance.insertSpeechHistory(audioPath, transcription);
       debugPrint('Saved speech history with audio file: $audioPath');
     } catch (e) {
       debugPrint('Error saving speech history: $e');
