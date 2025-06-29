@@ -5,7 +5,7 @@ class TranslationHistory {
   final int? id;
   final String originalText;
   final String translatedText;
-  final String targetLanguage; // Add target language field
+  final String targetLanguage;
   final DateTime timestamp;
 
   TranslationHistory({
@@ -31,7 +31,7 @@ class TranslationHistory {
       id: map['id'],
       originalText: map['originalText'],
       translatedText: map['translatedText'],
-      targetLanguage: map['targetLanguage'] ?? 'malay', // Default fallback
+      targetLanguage: map['targetLanguage'] ?? 'malay',
       timestamp: DateTime.fromMillisecondsSinceEpoch(map['timestamp']),
     );
   }
@@ -115,7 +115,7 @@ class AppDatabase {
 
     return await openDatabase(
       path,
-      version: 1, // Set version to 1, as all schema is now in initial create
+      version: 1,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -271,7 +271,7 @@ class AppDatabase {
     final result = await db.query('settings', limit: 1);
     
     if (result.isNotEmpty) {
-      // Update existing settings - no WHERE clause needed since there's only one record
+      // Update existing settings
       return await db.update('settings', settings.toMap());
     } else {
       // Insert new settings

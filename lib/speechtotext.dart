@@ -295,33 +295,6 @@ class _SpeechToTextState extends State<SpeechToText> {
                         );
                       },
                     ),
-                    // Add History option
-                    ListTile(
-                      leading: const Icon(Icons.history, color: Colors.white),
-                      title: const Text(
-                        'Speech History',
-                        style: TextStyle(color: Colors.white, fontSize: 16),
-                      ),
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          PageRouteBuilder(
-                            pageBuilder:
-                                (context, animation, secondaryAnimation) =>
-                                    const SpeechHistoryPage(),
-                            transitionsBuilder: (
-                              context,
-                              animation,
-                              secondaryAnimation,
-                              child,
-                            ) {
-                              return child;
-                            },
-                          ),
-                        );
-                      },
-                    ),
                   ],
                 ),
               ),
