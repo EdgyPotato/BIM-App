@@ -25,12 +25,6 @@ class ModelManager {
 
   static const String _assetsPath = 'assets/models';
 
-  /// Gets the model path for the specified model type
-  /// 
-  /// Returns the path to use with YOLO inference:
-  /// - For bundled models: returns the asset name
-  /// - For downloaded models: returns the full file path
-  /// - If model doesn't exist: downloads it first
   Future<String?> getModelPath(ModelType modelType) async {
     if (!Platform.isAndroid) {
       _updateStatus('Unsupported platform: ${Platform.operatingSystem}');
