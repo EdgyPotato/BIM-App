@@ -7,12 +7,12 @@ import 'package:http_parser/http_parser.dart';
 import 'database.dart';
 
 class ApiController {
-  static const String baseUrl = 'https://bim-backend-api.onrender.com';
+  static const String baseUrl = 'https://example-api.com'; // Replace with actual API base URL
   static const String healthEndpoint = '$baseUrl/healthz';
   static const String transcribeEndpoint = '$baseUrl/transcribe';
   static const String translateEndpoint = '$baseUrl/translate';
   
-  static const String modelDownloadBaseUrl = 'https://github.com/EdgyPotato/Yolo-Model/releases/download/v0.0.4';
+  static const String modelDownloadBaseUrl = 'https://github.com/EdgyPotato/Yolo-Model/releases/download/v0.0.4'; // Replace with latest model or trained model URL
   
   // Check if the API is available
   static Future<bool> checkApiStatus() async {
