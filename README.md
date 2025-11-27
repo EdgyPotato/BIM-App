@@ -14,13 +14,13 @@ The app captures hand-sign gestures (local or backend detection), converts them 
 
 ## Screenshots
 
-<img src="https://github.com/user-attachments/assets/12162cc4-4051-4a50-9264-cc82f4943eb5" width=200>
-<img src="https://github.com/user-attachments/assets/5f04dfab-82eb-4bbd-a4b0-fece34c79726" width=200>
-<img src="https://github.com/user-attachments/assets/fb9e24e6-b3c9-4ed0-81d1-e58915811ca2" width=200>
-<img src="https://github.com/user-attachments/assets/f5b7ca32-e63a-448a-a69d-569733ab6981" width=200>
-<img src="https://github.com/user-attachments/assets/7eb4c08d-4e7b-46e8-aaa3-7ba2998521f2" width=200>
-<img src="https://github.com/user-attachments/assets/857a8fd7-6ad2-4908-ac93-cd2720d2598c" width=200>
-<img src="https://github.com/user-attachments/assets/f10d652b-cc28-4e3e-8ef6-071c1a125f49" width=200>
+<img src="https://github.com/user-attachments/assets/12162cc4-4051-4a50-9264-cc82f4943eb5" width=240>
+<img src="https://github.com/user-attachments/assets/5f04dfab-82eb-4bbd-a4b0-fece34c79726" width=240>
+<img src="https://github.com/user-attachments/assets/fb9e24e6-b3c9-4ed0-81d1-e58915811ca2" width=240>
+<img src="https://github.com/user-attachments/assets/f5b7ca32-e63a-448a-a69d-569733ab6981" width=240>
+<img src="https://github.com/user-attachments/assets/7eb4c08d-4e7b-46e8-aaa3-7ba2998521f2" width=240>
+<img src="https://github.com/user-attachments/assets/857a8fd7-6ad2-4908-ac93-cd2720d2598c" width=240>
+<img src="https://github.com/user-attachments/assets/f10d652b-cc28-4e3e-8ef6-071c1a125f49" width=240>
 
 ## Technology Used
 - Framework: Flutter (Dart)
@@ -38,4 +38,5 @@ The app captures hand-sign gestures (local or backend detection), converts them 
 - Model accuracy may vary based on lighting, background, and hand positioning.
 - Limited vocabulary based on available training data.
 - API URL is disabled and removed, you are required to implement your own API from huggingface.
+
 
