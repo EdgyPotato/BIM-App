@@ -38,5 +38,6 @@ The app captures hand-sign gestures (local or backend detection), converts them 
 - Model accuracy may vary based on lighting, background, and hand positioning.
 - Limited vocabulary based on available training data.
 - API URL is disabled and removed, you are required to implement your own API from huggingface.
+- Some features might not work as intended due to hardware limitations or outdated libraries.
 
 
